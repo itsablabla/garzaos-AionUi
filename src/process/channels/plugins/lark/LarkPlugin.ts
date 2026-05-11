@@ -40,6 +40,20 @@ type LarkBotInfoResponse = {
   };
 };
 
+type LarkWebSocketEndpointResponse = {
+  code?: number;
+  msg?: string;
+  data?: {
+    URL?: string;
+    ClientConfig?: {
+      PingInterval?: number;
+      ReconnectCount?: number;
+      ReconnectInterval?: number;
+      ReconnectNonce?: number;
+    };
+  };
+};
+
 function stringifyLogArgs(args: unknown[]): string {
   return args
     .map((arg) => {
@@ -72,9 +86,8 @@ function createLarkWebSocketErrorMessage(detail: string): string {
   return `Lark WebSocket startup failed: ${normalizedDetail}`;
 }
 
-function isLarkDomainRetryableError(error: unknown): boolean {
-  const message = getErrorMessage(error);
-  return message.includes('1000040351') || message.includes('PingInterval');
+function getDomainBaseUrl(domain: lark.Domain): string {
+  return domain === lark.Domain.Lark ? 'https://open.larksuite.com' : 'https://open.feishu.cn';
 }
 
 export class LarkPlugin extends BasePlugin {
@@ -108,12 +121,12 @@ export class LarkPlugin extends BasePlugin {
       throw new Error('Lark App ID and App Secret are required');
     }
 
-    // Create Lark client
+    // Create Lark client. The domain is updated in onStart after probing the WS endpoint.
     this.client = new lark.Client({
       appId,
       appSecret,
       appType: lark.AppType.SelfBuild,
-      domain: lark.Domain.Feishu, // Use Feishu domain, can be configured for Lark international
+      domain: lark.Domain.Feishu,
     });
 
     this.botInfo = { appId };
@@ -154,7 +167,9 @@ export class LarkPlugin extends BasePlugin {
       // Setup event handlers on the dispatcher
       this.setupEventHandlers();
 
-      await this.startWebSocketWithDomainFallback(appId, appSecret);
+      const domain = await this.resolveWebSocketDomain(appId, appSecret);
+      this.client = this.createClient(appId, appSecret, domain);
+      await this.startWebSocket(appId, appSecret, domain);
       this.isConnected = true;
 
       // Start event cache cleanup timer
@@ -168,23 +183,78 @@ export class LarkPlugin extends BasePlugin {
     }
   }
 
-  /**
-   * Try Feishu first for existing users, then Lark international when the SDK reports
-   * the common wrong-domain long-connection failure.
-   */
-  private async startWebSocketWithDomainFallback(appId: string, appSecret: string): Promise<void> {
-    try {
-      await this.startWebSocket(appId, appSecret, lark.Domain.Feishu);
-      return;
-    } catch (error) {
-      this.closeWebSocketClient();
-      if (!isLarkDomainRetryableError(error)) {
-        throw error;
-      }
-      console.warn('[LarkPlugin] Feishu WebSocket domain failed, retrying Lark international domain');
+  private createClient(appId: string, appSecret: string, domain: lark.Domain): lark.Client {
+    return new lark.Client({
+      appId,
+      appSecret,
+      appType: lark.AppType.SelfBuild,
+      domain,
+    });
+  }
+
+  private async resolveWebSocketDomain(appId: string, appSecret: string): Promise<lark.Domain> {
+    const feishuProbe = await this.probeWebSocketEndpoint(appId, appSecret, lark.Domain.Feishu);
+    if (feishuProbe.ok) {
+      return lark.Domain.Feishu;
     }
 
-    await this.startWebSocket(appId, appSecret, lark.Domain.Lark);
+    const feishuErrorMessage = feishuProbe.message;
+    const shouldTryLark =
+      feishuErrorMessage.includes('Incorrect domain name') ||
+      feishuErrorMessage.includes('1000040351') ||
+      feishuErrorMessage.includes('PingInterval');
+
+    if (!shouldTryLark) {
+      throw new Error(createLarkWebSocketErrorMessage(feishuErrorMessage));
+    }
+
+    console.warn('[LarkPlugin] Feishu WebSocket endpoint rejected the app, retrying Lark international domain');
+
+    const larkProbe = await this.probeWebSocketEndpoint(appId, appSecret, lark.Domain.Lark);
+    if (larkProbe.ok) {
+      return lark.Domain.Lark;
+    }
+
+    const larkErrorMessage = larkProbe.message;
+    throw new Error(createLarkWebSocketErrorMessage(larkErrorMessage));
+  }
+
+  private async probeWebSocketEndpoint(
+    appId: string,
+    appSecret: string,
+    domain: lark.Domain
+  ): Promise<{ ok: boolean; message: string }> {
+    try {
+      const response = await fetch(`${getDomainBaseUrl(domain)}/callback/ws/endpoint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          locale: 'zh',
+        },
+        body: JSON.stringify({
+          AppID: appId,
+          AppSecret: appSecret,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const body = (await response.json()) as LarkWebSocketEndpointResponse;
+
+      if (body.code === 0 && body.data?.URL && body.data.ClientConfig) {
+        return { ok: true, message: '' };
+      }
+
+      return {
+        ok: false,
+        message: `domain=${domain === lark.Domain.Lark ? 'Lark' : 'Feishu'} code=${body.code ?? response.status} ${
+          body.msg || 'WebSocket endpoint unavailable'
+        }`,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: `domain=${domain === lark.Domain.Lark ? 'Lark' : 'Feishu'} ${getErrorMessage(error)}`,
+      };
+    }
   }
 
   private async startWebSocket(appId: string, appSecret: string, domain: lark.Domain): Promise<void> {

@@ -30,6 +30,7 @@ const mockControl: {
   closeSpy: ReturnType<typeof vi.fn> | null;
   tokenResponse: { code: number; msg?: string };
   botInfoResponse: BotInfoResponse;
+  fetchResponses: Array<{ code: number; msg?: string; data?: Record<string, unknown> }>;
 } = {
   startHandler: (logger) => logger.info('[ws]', 'ws client ready'),
   closeSpy: null,
@@ -39,6 +40,7 @@ const mockControl: {
     msg: 'ok',
     bot: { activate_status: 2, app_name: 'Garza Lord' },
   },
+  fetchResponses: [{ code: 0, data: { URL: 'wss://feishu.test', ClientConfig: { PingInterval: 120 } } }],
 };
 
 function createConfig() {
@@ -134,6 +136,14 @@ describe('LarkPlugin WebSocket startup', () => {
       msg: 'ok',
       bot: { activate_status: 2, app_name: 'Garza Lord' },
     };
+    mockControl.fetchResponses = [{ code: 0, data: { URL: 'wss://feishu.test', ClientConfig: { PingInterval: 120 } } }];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        json: async () => mockControl.fetchResponses.shift() || { code: 0 },
+        status: 200,
+      }))
+    );
   });
 
   it('does not enter running state when SDK reports long-connection startup failure', async () => {
@@ -169,13 +179,12 @@ describe('LarkPlugin WebSocket startup', () => {
     vi.useFakeTimers();
 
     const domains: string[] = [];
+    mockControl.fetchResponses = [
+      { code: 1000040351, msg: 'Incorrect domain name' },
+      { code: 0, data: { URL: 'wss://lark.test', ClientConfig: { PingInterval: 120 } } },
+    ];
     mockControl.startHandler = (logger, domain) => {
       domains.push(domain);
-      if (domain === 'Feishu') {
-        logger.error('[ws]', 'code: 1000040351, system busy');
-        logger.error('[ws]', "Cannot read properties of undefined (reading 'PingInterval')");
-        return;
-      }
       logger.info('[ws]', 'ws client ready');
     };
 
@@ -187,7 +196,7 @@ describe('LarkPlugin WebSocket startup', () => {
     await vi.advanceTimersByTimeAsync(600);
     await startPromise;
 
-    expect(domains).toEqual(['Feishu', 'Lark']);
+    expect(domains).toEqual(['Lark']);
     expect(plugin.status).toBe('running');
   });
 
