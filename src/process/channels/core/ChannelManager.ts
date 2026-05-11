@@ -10,7 +10,7 @@ import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { getChannelDefaultModel } from '../actions/SystemActions';
 import { ActionExecutor } from '../gateway/ActionExecutor';
 import { PluginManager, registerPlugin } from '../gateway/PluginManager';
-import { PairingService } from '../pairing/PairingService';
+import { PairingService, setPairingServiceInstance } from '../pairing/PairingService';
 import { DingTalkPlugin } from '../plugins/dingtalk/DingTalkPlugin';
 import { LarkPlugin } from '../plugins/lark/LarkPlugin';
 import { TelegramPlugin } from '../plugins/telegram/TelegramPlugin';
@@ -83,6 +83,7 @@ export class ChannelManager {
 
       // Initialize sub-components
       this.pairingService = new PairingService();
+      setPairingServiceInstance(this.pairingService);
       this.sessionManager = new SessionManager();
       await this.sessionManager.ready;
       this.pluginManager = new PluginManager(this.sessionManager);
@@ -148,6 +149,7 @@ export class ChannelManager {
 
       // Stop pairing service cleanup interval
       this.pairingService?.stop();
+      setPairingServiceInstance(null);
 
       // Shutdown Gemini service
       await getChannelMessageService().shutdown();

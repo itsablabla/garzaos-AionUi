@@ -19,6 +19,76 @@ import { extractCardAction, LARK_MESSAGE_LIMIT, toLarkSendParams, toUnifiedIncom
 // Event deduplication settings
 const EVENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const EVENT_CACHE_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
+const WS_STARTUP_TIMEOUT_MS = 12_000;
+const WS_READY_SETTLE_MS = 500;
+
+type LarkSdkLogger = {
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+  debug: (...args: unknown[]) => void;
+  trace: (...args: unknown[]) => void;
+};
+
+type LarkBotInfoResponse = {
+  code?: number;
+  msg?: string;
+  bot?: {
+    activate_status?: number;
+    app_name?: string;
+    open_id?: string;
+  };
+};
+
+type LarkWebSocketEndpointResponse = {
+  code?: number;
+  msg?: string;
+  data?: {
+    URL?: string;
+    ClientConfig?: {
+      PingInterval?: number;
+      ReconnectCount?: number;
+      ReconnectInterval?: number;
+      ReconnectNonce?: number;
+    };
+  };
+};
+
+function stringifyLogArgs(args: unknown[]): string {
+  return args
+    .map((arg) => {
+      if (typeof arg === 'string') return arg;
+      if (arg instanceof Error) return arg.message;
+      try {
+        return JSON.stringify(arg);
+      } catch {
+        return String(arg);
+      }
+    })
+    .join(' ');
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function createLarkWebSocketErrorMessage(detail: string): string {
+  const normalizedDetail = detail.trim() || 'unknown startup error';
+  const isLongConnectionIssue = normalizedDetail.includes('1000040351') || normalizedDetail.includes('PingInterval');
+
+  if (isLongConnectionIssue) {
+    return [
+      `Lark WebSocket startup failed: ${normalizedDetail}`,
+      'Verify the Feishu/Lark Developer Console is configured to use long connection for events and callbacks, and confirm the app domain matches Feishu vs Lark international.',
+    ].join(' ');
+  }
+
+  return `Lark WebSocket startup failed: ${normalizedDetail}`;
+}
+
+function getDomainBaseUrl(domain: lark.Domain): string {
+  return domain === lark.Domain.Lark ? 'https://open.larksuite.com' : 'https://open.feishu.cn';
+}
 
 export class LarkPlugin extends BasePlugin {
   readonly type: PluginType = 'lark';
@@ -51,12 +121,12 @@ export class LarkPlugin extends BasePlugin {
       throw new Error('Lark App ID and App Secret are required');
     }
 
-    // Create Lark client
+    // Create Lark client. The domain is updated in onStart after probing the WS endpoint.
     this.client = new lark.Client({
       appId,
       appSecret,
       appType: lark.AppType.SelfBuild,
-      domain: lark.Domain.Feishu, // Use Feishu domain, can be configured for Lark international
+      domain: lark.Domain.Feishu,
     });
 
     this.botInfo = { appId };
@@ -97,24 +167,9 @@ export class LarkPlugin extends BasePlugin {
       // Setup event handlers on the dispatcher
       this.setupEventHandlers();
 
-      // Create WebSocket client for receiving events
-      // Enable SDK logging to see connection details
-      this.wsClient = new lark.WSClient({
-        appId,
-        appSecret,
-        domain: lark.Domain.Feishu,
-        loggerLevel: lark.LoggerLevel.info,
-      });
-
-      // Start WebSocket connection with event dispatcher
-      this.wsClient
-        .start({
-          eventDispatcher: this.eventDispatcher,
-        })
-        .catch((err: unknown) => {
-          console.error(`[LarkPlugin] WebSocket start() error:`, err);
-        });
-
+      const domain = await this.resolveWebSocketDomain(appId, appSecret);
+      this.client = this.createClient(appId, appSecret, domain);
+      await this.startWebSocket(appId, appSecret, domain);
       this.isConnected = true;
 
       // Start event cache cleanup timer
@@ -123,8 +178,107 @@ export class LarkPlugin extends BasePlugin {
       console.log(`[LarkPlugin] Started for app ${appId}`);
     } catch (error) {
       console.error('[LarkPlugin] Failed to start:', error);
+      this.closeWebSocketClient();
       throw error;
     }
+  }
+
+  private createClient(appId: string, appSecret: string, domain: lark.Domain): lark.Client {
+    return new lark.Client({
+      appId,
+      appSecret,
+      appType: lark.AppType.SelfBuild,
+      domain,
+    });
+  }
+
+  private async resolveWebSocketDomain(appId: string, appSecret: string): Promise<lark.Domain> {
+    const feishuProbe = await this.probeWebSocketEndpoint(appId, appSecret, lark.Domain.Feishu);
+    if (feishuProbe.ok) {
+      return lark.Domain.Feishu;
+    }
+
+    const feishuErrorMessage = feishuProbe.message;
+    const shouldTryLark =
+      feishuErrorMessage.includes('Incorrect domain name') ||
+      feishuErrorMessage.includes('1000040351') ||
+      feishuErrorMessage.includes('PingInterval');
+
+    if (!shouldTryLark) {
+      throw new Error(createLarkWebSocketErrorMessage(feishuErrorMessage));
+    }
+
+    console.warn('[LarkPlugin] Feishu WebSocket endpoint rejected the app, retrying Lark international domain');
+
+    const larkProbe = await this.probeWebSocketEndpoint(appId, appSecret, lark.Domain.Lark);
+    if (larkProbe.ok) {
+      return lark.Domain.Lark;
+    }
+
+    const larkErrorMessage = larkProbe.message;
+    throw new Error(createLarkWebSocketErrorMessage(larkErrorMessage));
+  }
+
+  private async probeWebSocketEndpoint(
+    appId: string,
+    appSecret: string,
+    domain: lark.Domain
+  ): Promise<{ ok: boolean; message: string }> {
+    try {
+      const response = await fetch(`${getDomainBaseUrl(domain)}/callback/ws/endpoint`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          locale: 'zh',
+        },
+        body: JSON.stringify({
+          AppID: appId,
+          AppSecret: appSecret,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const body = (await response.json()) as LarkWebSocketEndpointResponse;
+
+      if (body.code === 0 && body.data?.URL && body.data.ClientConfig) {
+        return { ok: true, message: '' };
+      }
+
+      return {
+        ok: false,
+        message: `domain=${domain === lark.Domain.Lark ? 'Lark' : 'Feishu'} code=${body.code ?? response.status} ${
+          body.msg || 'WebSocket endpoint unavailable'
+        }`,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: `domain=${domain === lark.Domain.Lark ? 'Lark' : 'Feishu'} ${getErrorMessage(error)}`,
+      };
+    }
+  }
+
+  private async startWebSocket(appId: string, appSecret: string, domain: lark.Domain): Promise<void> {
+    if (!this.eventDispatcher) {
+      throw new Error('Event dispatcher not initialized');
+    }
+
+    const startup = this.createWebSocketStartupMonitor();
+
+    // Create WebSocket client for receiving events.
+    // The Lark SDK start() method is fire-and-forget, so readiness is inferred from SDK logs.
+    this.wsClient = new lark.WSClient({
+      appId,
+      appSecret,
+      domain,
+      loggerLevel: lark.LoggerLevel.info,
+      logger: startup.logger,
+    });
+
+    // Start WebSocket connection with event dispatcher.
+    await this.wsClient.start({
+      eventDispatcher: this.eventDispatcher,
+    });
+    await startup.waitForReady();
   }
 
   /**
@@ -134,10 +288,7 @@ export class LarkPlugin extends BasePlugin {
     // Stop event cleanup timer
     this.stopEventCleanup();
 
-    if (this.wsClient) {
-      // WSClient doesn't have a stop method, we just set to null
-      this.wsClient = null;
-    }
+    this.closeWebSocketClient();
 
     this.eventDispatcher = null;
     this.client = null;
@@ -149,6 +300,114 @@ export class LarkPlugin extends BasePlugin {
     this.isConnected = false;
 
     console.log('[LarkPlugin] Stopped and cleaned up');
+  }
+
+  /**
+   * Close the SDK WebSocket client and clear the reference.
+   */
+  private closeWebSocketClient(): void {
+    if (!this.wsClient) return;
+
+    try {
+      this.wsClient.close({ force: true });
+    } catch (error) {
+      console.warn('[LarkPlugin] Failed to close WebSocket client:', error);
+    } finally {
+      this.wsClient = null;
+    }
+  }
+
+  /**
+   * Watch SDK logs because WSClient.start() returns before the socket is usable.
+   */
+  private createWebSocketStartupMonitor(): { logger: LarkSdkLogger; waitForReady: () => Promise<void> } {
+    let settled = false;
+    let readySettleTimer: ReturnType<typeof setTimeout> | null = null;
+    let startupTimeout: ReturnType<typeof setTimeout> | null = null;
+    let resolveReady: (() => void) | null = null;
+    let rejectReady: ((error: Error) => void) | null = null;
+
+    const clearTimers = () => {
+      if (readySettleTimer) {
+        clearTimeout(readySettleTimer);
+        readySettleTimer = null;
+      }
+      if (startupTimeout) {
+        clearTimeout(startupTimeout);
+        startupTimeout = null;
+      }
+    };
+
+    const fail = (message: string) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      rejectReady?.(new Error(createLarkWebSocketErrorMessage(message)));
+    };
+
+    const markReady = () => {
+      if (settled || readySettleTimer) return;
+      readySettleTimer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        clearTimers();
+        resolveReady?.();
+      }, WS_READY_SETTLE_MS);
+    };
+
+    const inspect = (level: 'info' | 'warn' | 'error' | 'debug' | 'trace', args: unknown[]) => {
+      const message = stringifyLogArgs(args);
+      if (message.trim()) {
+        const sink =
+          level === 'error'
+            ? console.error
+            : level === 'warn'
+              ? console.warn
+              : level === 'debug'
+                ? console.debug
+                : console.log;
+        sink('[LarkPlugin][WS]', message);
+      }
+
+      if (level === 'error' && this.isFatalWebSocketStartupLog(message)) {
+        fail(message);
+        return;
+      }
+
+      if (message.includes('ws client ready')) {
+        markReady();
+      }
+    };
+
+    const readyPromise = new Promise<void>((resolve, reject) => {
+      resolveReady = resolve;
+      rejectReady = reject;
+      startupTimeout = setTimeout(() => {
+        fail(`Timed out after ${WS_STARTUP_TIMEOUT_MS}ms waiting for Lark WebSocket readiness`);
+      }, WS_STARTUP_TIMEOUT_MS);
+    });
+
+    return {
+      logger: {
+        info: (...args: unknown[]) => inspect('info', args),
+        warn: (...args: unknown[]) => inspect('warn', args),
+        error: (...args: unknown[]) => inspect('error', args),
+        debug: (...args: unknown[]) => inspect('debug', args),
+        trace: (...args: unknown[]) => inspect('trace', args),
+      },
+      waitForReady: () => readyPromise,
+    };
+  }
+
+  private isFatalWebSocketStartupLog(message: string): boolean {
+    return (
+      message.includes('1000040351') ||
+      message.includes('PingInterval') ||
+      message.includes('app_id') ||
+      message.includes('appSecret') ||
+      message.includes('app secret') ||
+      message.includes('invalid')
+    );
   }
 
   /**
@@ -637,20 +896,47 @@ export class LarkPlugin extends BasePlugin {
         domain: lark.Domain.Feishu,
       });
 
-      // Try to get tenant access token to verify credentials
-      // The SDK will throw if credentials are invalid
-      await client.auth.tenantAccessToken.internal({
+      // Try to get tenant access token to verify credentials.
+      const tokenResponse = await client.auth.tenantAccessToken.internal({
         data: {
           app_id: appId,
           app_secret: appSecret,
         },
       });
 
-      return { success: true, botInfo: { name: 'Lark Bot' } };
-    } catch (error: any) {
+      if (tokenResponse.code !== 0) {
+        return {
+          success: false,
+          error: tokenResponse.msg || 'Failed to obtain Lark tenant access token',
+        };
+      }
+
+      const botInfoResponse = await client.request<LarkBotInfoResponse>({
+        method: 'GET',
+        url: '/open-apis/bot/v3/info',
+      });
+
+      if (botInfoResponse.code !== 0) {
+        return {
+          success: false,
+          error: botInfoResponse.msg || 'Failed to get Lark bot info. Ensure bot ability is enabled and published.',
+        };
+      }
+
+      const bot = botInfoResponse.bot;
+      if (!bot || bot.activate_status !== 2) {
+        return {
+          success: false,
+          error:
+            'Lark bot ability is not active. Enable bot ability, install/enable the app in the tenant, and publish the app.',
+        };
+      }
+
+      return { success: true, botInfo: { name: bot.app_name || 'Lark Bot' } };
+    } catch (error) {
       return {
         success: false,
-        error: error.message || 'Failed to connect to Lark API',
+        error: getErrorMessage(error) || 'Failed to connect to Lark API',
       };
     }
   }

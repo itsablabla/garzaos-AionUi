@@ -330,3 +330,7 @@ export function getPairingService(): PairingService {
   }
   return pairingServiceInstance;
 }
+
+export function setPairingServiceInstance(instance: PairingService | null): void {
+  pairingServiceInstance = instance;
+}
