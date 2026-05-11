@@ -403,7 +403,6 @@ export class LarkPlugin extends BasePlugin {
     return (
       message.includes('1000040351') ||
       message.includes('PingInterval') ||
-      message.includes('connect failed') ||
       message.includes('app_id') ||
       message.includes('appSecret') ||
       message.includes('app secret') ||
