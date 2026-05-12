@@ -26,6 +26,7 @@ import { initGeminiConversationBridge } from './geminiConversationBridge';
 import { initMcpBridge } from './mcpBridge';
 import { initModelBridge } from './modelBridge';
 import { initPreviewHistoryBridge } from './previewHistoryBridge';
+import { initProjectHierarchyBridge } from './projectHierarchyBridge';
 import { initShellBridge } from './shellBridge';
 import { initStarOfficeBridge } from './starOfficeBridge';
 import { initSpeechToTextBridge } from './speechToTextBridge';
@@ -81,6 +82,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initWebuiBridge();
   initChannelBridge(deps.channelRepo);
   initDatabaseBridge(deps.conversationRepo);
+  initProjectHierarchyBridge();
   initExtensionsBridge(deps.conversationRepo, deps.workerTaskManager);
   initCronBridge();
   initSystemSettingsBridge();
@@ -130,6 +132,7 @@ export {
   initOfficeWatchBridge,
   initPptPreviewBridge,
   initPreviewHistoryBridge,
+  initProjectHierarchyBridge,
   initShellBridge,
   initSpeechToTextBridge,
   initStarOfficeBridge,

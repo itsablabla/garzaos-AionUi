@@ -1214,6 +1214,107 @@ const migration_v26: IMigration = {
 };
 
 /**
+ * Migration v26 -> v27: Add Project/Folder hierarchy tables.
+ * Existing flat custom workspaces are backfilled into one default group with
+ * one folder per workspace, and conversations keep their workspace fields while
+ * getting an extra.projectFolderId reference for safe leaf association.
+ */
+const migration_v27: IMigration = {
+  version: 27,
+  name: 'Add project folder hierarchy',
+  up: (db) => {
+    db.exec(`CREATE TABLE IF NOT EXISTS folder_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      deleted_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_folder_groups_deleted_sort ON folder_groups(deleted_at, sort_order, id)');
+
+    db.exec(`CREATE TABLE IF NOT EXISTS project_folders (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      workspace TEXT NOT NULL,
+      color TEXT,
+      git_branch TEXT,
+      default_agent_type TEXT,
+      group_id TEXT NOT NULL,
+      sort_order_in_group INTEGER NOT NULL DEFAULT 0,
+      is_open INTEGER NOT NULL DEFAULT 1,
+      deleted_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (group_id) REFERENCES folder_groups(id) ON DELETE CASCADE
+    )`);
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_project_folders_group_sort ON project_folders(group_id, deleted_at, sort_order_in_group, id)'
+    );
+    db.exec(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_project_folders_active_workspace ON project_folders(workspace) WHERE deleted_at IS NULL'
+    );
+    db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_conversations_project_folder ON conversations(json_extract(extra, '$.projectFolderId'), updated_at DESC)`
+    );
+
+    const now = Date.now();
+    const defaultGroupId = 'default-workspaces';
+    db.prepare(
+      `INSERT OR IGNORE INTO folder_groups (id, name, sort_order, deleted_at, created_at, updated_at)
+       VALUES (?, ?, ?, NULL, ?, ?)`
+    ).run(defaultGroupId, 'Workspaces', 0, now, now);
+
+    const workspaceRows = db
+      .prepare(
+        `SELECT json_extract(extra, '$.workspace') AS workspace, MAX(updated_at) AS updated_at
+         FROM conversations
+         WHERE json_extract(extra, '$.customWorkspace') = 1
+           AND json_extract(extra, '$.workspace') IS NOT NULL
+           AND json_extract(extra, '$.workspace') != ''
+         GROUP BY workspace
+         ORDER BY updated_at DESC`
+      )
+      .all() as Array<{ workspace: string; updated_at: number }>;
+
+    const insertFolder = db.prepare(
+      `INSERT OR IGNORE INTO project_folders (
+        id, name, path, workspace, color, git_branch, default_agent_type, group_id,
+        sort_order_in_group, is_open, deleted_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, 1, NULL, ?, ?)`
+    );
+
+    const updateConversationFolder = db.prepare(
+      `UPDATE conversations
+       SET extra = json_set(extra, '$.projectFolderId', ?)
+       WHERE json_extract(extra, '$.customWorkspace') = 1
+         AND json_extract(extra, '$.workspace') = ?
+         AND json_extract(extra, '$.projectFolderId') IS NULL`
+    );
+
+    workspaceRows.forEach((row, index) => {
+      const folderId = `workspace:${encodeURIComponent(row.workspace)}`;
+      const normalizedPath = row.workspace.replace(/\/+$/, '');
+      const name = normalizedPath.split('/').filter(Boolean).at(-1) || row.workspace;
+      insertFolder.run(folderId, name, row.workspace, row.workspace, defaultGroupId, index, now, row.updated_at || now);
+      updateConversationFolder.run(folderId, row.workspace);
+    });
+
+    console.log('[Migration v27] Added project folder hierarchy tables and workspace backfill');
+  },
+  down: (db) => {
+    db.exec('DROP INDEX IF EXISTS idx_conversations_project_folder');
+    db.exec('DROP INDEX IF EXISTS idx_project_folders_active_workspace');
+    db.exec('DROP INDEX IF EXISTS idx_project_folders_group_sort');
+    db.exec('DROP TABLE IF EXISTS project_folders');
+    db.exec('DROP INDEX IF EXISTS idx_folder_groups_deleted_sort');
+    db.exec('DROP TABLE IF EXISTS folder_groups');
+    console.log('[Migration v27] Rolled back: Removed project folder hierarchy tables');
+  },
+};
+
+/**
  * All migrations in order
  */
 // prettier-ignore
@@ -1222,7 +1323,7 @@ export const ALL_MIGRATIONS: IMigration[] = [
   migration_v7, migration_v8, migration_v9, migration_v10, migration_v11, migration_v12,
   migration_v13, migration_v14, migration_v15, migration_v16, migration_v17, migration_v18,
   migration_v19, migration_v20, migration_v21, migration_v22, migration_v23, migration_v24,
-  migration_v25, migration_v26,
+  migration_v25, migration_v26, migration_v27,
 ];
 
 /**

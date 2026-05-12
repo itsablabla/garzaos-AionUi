@@ -55,6 +55,7 @@ const createConversation = (id: string): TChatConversation => ({
 const groupedHistory: GroupedHistoryResult = {
   pinnedConversations: [createConversation('pinned-1')],
   timelineSections: [],
+  projectGroups: [],
 };
 
 const createWrapper = (): React.FC<React.PropsWithChildren> => {
@@ -83,6 +84,7 @@ describe('ConversationHistoryProvider', () => {
       hasCompletionUnread: () => false,
       clearCompletionUnread: () => {},
       setActiveConversation: () => {},
+      projectHierarchy: { groups: [] },
     });
   });
 

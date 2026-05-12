@@ -5,6 +5,7 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import type { ProjectFolder, ProjectFolderGroup } from '@/common/types/projectHierarchy';
 import { getActivityTime } from '@/renderer/utils/chat/timeline';
 import { getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { getWorkspaceUpdateTime } from '@/renderer/utils/workspace/workspaceHistory';
@@ -89,6 +90,72 @@ export const groupConversationsByWorkspace = (
   ];
 };
 
+const getConversationProjectFolderId = (conversation: TChatConversation): string | undefined => {
+  const extra = conversation.extra as { projectFolderId?: string } | undefined;
+  return typeof extra?.projectFolderId === 'string' && extra.projectFolderId ? extra.projectFolderId : undefined;
+};
+
+export const buildProjectGroups = (conversations: TChatConversation[]): ProjectFolderGroup[] => {
+  const folderMap = new Map<string, ProjectFolder & { conversations: TChatConversation[] }>();
+  const groupMap = new Map<string, ProjectFolderGroup>();
+  const sortedConversations = [...conversations].toSorted((a, b) => getActivityTime(b) - getActivityTime(a));
+
+  sortedConversations.forEach((conversation) => {
+    const workspace = conversation.extra?.workspace;
+    const customWorkspace = conversation.extra?.customWorkspace;
+    if (!workspace || !customWorkspace) return;
+
+    const projectFolderId =
+      getConversationProjectFolderId(conversation) ?? `workspace:${encodeURIComponent(workspace)}`;
+    const existingFolder = folderMap.get(projectFolderId);
+    if (existingFolder) {
+      existingFolder.conversations.push(conversation);
+      return;
+    }
+
+    const sortOrder = folderMap.size;
+    const folder: ProjectFolder & { conversations: TChatConversation[] } = {
+      id: projectFolderId,
+      name: getWorkspaceDisplayName(workspace),
+      path: workspace,
+      workspace,
+      groupId: 'default-workspaces',
+      sortOrderInGroup: sortOrder,
+      isOpen: true,
+      createdAt: conversation.createTime,
+      updatedAt: getActivityTime(conversation),
+      conversations: [conversation],
+    };
+    folderMap.set(projectFolderId, folder);
+  });
+
+  const folders = [...folderMap.values()].toSorted((a, b) => {
+    if (a.groupId !== b.groupId) return a.groupId.localeCompare(b.groupId);
+    if (a.sortOrderInGroup !== b.sortOrderInGroup) return a.sortOrderInGroup - b.sortOrderInGroup;
+    return b.updatedAt - a.updatedAt;
+  });
+
+  folders.forEach((folder) => {
+    const existingGroup = groupMap.get(folder.groupId);
+    if (existingGroup) {
+      existingGroup.folders.push(folder);
+      existingGroup.updatedAt = Math.max(existingGroup.updatedAt, folder.updatedAt);
+      return;
+    }
+
+    groupMap.set(folder.groupId, {
+      id: folder.groupId,
+      name: folder.groupId,
+      sortOrder: groupMap.size,
+      createdAt: folder.createdAt,
+      updatedAt: folder.updatedAt,
+      folders: [folder],
+    });
+  });
+
+  return [...groupMap.values()].toSorted((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+};
+
 /** Check whether a conversation belongs to a team (should be hidden from sidebar). */
 const isTeamConversation = (conversation: TChatConversation): boolean => {
   const extra = conversation.extra as { teamId?: string } | undefined;
@@ -119,6 +186,7 @@ export const buildGroupedHistory = (
 
   return {
     pinnedConversations,
+    projectGroups: buildProjectGroups(normalConversations),
     timelineSections: groupConversationsByWorkspace(normalConversations, t),
   };
 };

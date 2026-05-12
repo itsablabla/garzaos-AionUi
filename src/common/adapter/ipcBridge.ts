@@ -629,6 +629,45 @@ export const database = {
   >('database.search-conversation-messages'),
 };
 
+export const projectHierarchy = {
+  list: bridge.buildProvider<import('../types/projectHierarchy').ProjectHierarchy, void>('project-hierarchy.list'),
+  createGroup: bridge.buildProvider<import('../types/projectHierarchy').ProjectFolderGroup, { name: string }>(
+    'project-hierarchy.create-group'
+  ),
+  updateGroup: bridge.buildProvider<
+    import('../types/projectHierarchy').ProjectFolderGroup | undefined,
+    { groupId: string; updates: { name?: string; sortOrder?: number } }
+  >('project-hierarchy.update-group'),
+  deleteGroup: bridge.buildProvider<void, { groupId: string }>('project-hierarchy.delete-group'),
+  reorderGroups: bridge.buildProvider<void, { groupIds: string[] }>('project-hierarchy.reorder-groups'),
+  createFolder: bridge.buildProvider<
+    import('../types/projectHierarchy').ProjectFolder,
+    { name: string; path: string; workspace?: string; groupId?: string; color?: string }
+  >('project-hierarchy.create-folder'),
+  updateFolder: bridge.buildProvider<
+    import('../types/projectHierarchy').ProjectFolder | undefined,
+    {
+      folderId: string;
+      updates: {
+        name?: string;
+        color?: string;
+        gitBranch?: string;
+        defaultAgentType?: import('../types/projectHierarchy').ProjectFolderAgentType;
+        groupId?: string;
+        sortOrderInGroup?: number;
+        isOpen?: boolean;
+      };
+    }
+  >('project-hierarchy.update-folder'),
+  deleteFolder: bridge.buildProvider<void, { folderId: string }>('project-hierarchy.delete-folder'),
+  reorderFolders: bridge.buildProvider<void, { groupId: string; folderIds: string[] }>(
+    'project-hierarchy.reorder-folders'
+  ),
+  moveConversation: bridge.buildProvider<void, { conversationId: string; folderId: string | null }>(
+    'project-hierarchy.move-conversation'
+  ),
+};
+
 export const previewHistory = {
   list: bridge.buildProvider<PreviewSnapshotInfo[], { target: PreviewHistoryTarget }>('preview-history.list'),
   save: bridge.buildProvider<PreviewSnapshotInfo, { target: PreviewHistoryTarget; content: string }>(

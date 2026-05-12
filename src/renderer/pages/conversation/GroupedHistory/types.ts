@@ -5,6 +5,7 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import type { ProjectFolderGroup } from '@/common/types/projectHierarchy';
 
 export type WorkspaceGroup = {
   workspace: string;
@@ -27,6 +28,7 @@ export type TimelineSection = {
 export type GroupedHistoryResult = {
   pinnedConversations: TChatConversation[];
   timelineSections: TimelineSection[];
+  projectGroups: ProjectFolderGroup[];
 };
 
 export type ExportZipFile = {
