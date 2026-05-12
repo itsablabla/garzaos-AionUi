@@ -49,6 +49,33 @@ uv run --with websocket-client scripts/aion-session/session.py send --id 8f65f4b
 uv run --with websocket-client scripts/aion-session/session.py delete --id 8f65f4b7
 ```
 
+
+### MCP server for agents
+
+Run the repo-native MCP server with Bun so agents can call tools instead of shelling into scripts:
+
+```bash
+bun scripts/aion-session/mcp-server.mjs
+```
+
+Recommended MCP config snippet for dev WebUI:
+
+```json
+{
+  "mcpServers": {
+    "aion-session": {
+      "command": "bun",
+      "args": ["/absolute/path/to/garzaos-AionUi/scripts/aion-session/mcp-server.mjs"],
+      "env": {
+        "AIONUI_WS_URL": "ws://localhost:25809/"
+      }
+    }
+  }
+}
+```
+
+The MCP server reads auth from `AIONUI_SESSION_TOKEN` / `AIONUI_CSRF_TOKEN` or the saved cookie file created by `save-cookies`. It exposes tools for listing sessions, reading actual session messages/events, searching message text, creating org/project sessions, sending prompts, guarded deletion, and batch dispatch.
+
 ### Batch dispatch
 
 ```bash

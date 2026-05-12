@@ -14,6 +14,37 @@ The bundled scripts support two levels of control:
 - `scripts/aion-session/aionui_session.py` for single-session operations such as `create`, `list`, `send`, and `delete`
 - `scripts/aion-session/batch_dispatch.py` for creating or reusing many sessions and sending prompts to them concurrently
 
+
+## MCP Server Mode
+
+For agents that support MCP, prefer the repo-native stdio MCP server over direct script calls:
+
+```json
+{
+  "mcpServers": {
+    "aion-session": {
+      "command": "bun",
+      "args": ["/absolute/path/to/garzaos-AionUi/scripts/aion-session/mcp-server.mjs"],
+      "env": {
+        "AIONUI_WS_URL": "ws://localhost:25809/"
+      }
+    }
+  }
+}
+```
+
+Available MCP tools:
+
+- `aion_list_sessions` — list visible conversations with org metadata.
+- `aion_get_session_messages` — read the actual stored text/events for a conversation.
+- `aion_search_session_text` — search indexed message text across sessions.
+- `aion_create_session` — create a new session, including `org_workspace_id` / `org_project_id`.
+- `aion_send_message` — dispatch a prompt into an existing session.
+- `aion_delete_session` — guarded delete; requires `confirm=true`.
+- `aion_batch_dispatch` — create/reuse many sessions and send prompts for scalable review/control.
+
+Authentication uses `AIONUI_SESSION_TOKEN` / `AIONUI_CSRF_TOKEN` or `~/.aionui_cookies.json`.
+
 ## Recommended Workflow
 
 1. Confirm AionUI is running locally and exposing its WebSocket endpoint.
