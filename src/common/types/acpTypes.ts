@@ -414,9 +414,9 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     id: 'droid',
     name: 'Factory Droid',
     cliCommand: 'droid',
-    // Droid uses FACTORY_API_KEY from environment, not an interactive auth flow.
+    // Droid owns Factory auth itself (device pairing or FACTORY_API_KEY); AionUi only spawns the local CLI.
     authRequired: false,
-    enabled: false, // Droid is exposed via the droid-acp bridge for full streaming/session support.
+    enabled: false, // AgentRegistry exposes Droid via the local `droid exec --output-format acp` fallback.
     supportsStreaming: false,
     acpArgs: ['exec', '--output-format', 'acp'],
     skillsDirs: ['.factory/skills'],

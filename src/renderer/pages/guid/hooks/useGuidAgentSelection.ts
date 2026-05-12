@@ -380,10 +380,13 @@ export const useGuidAgentSelection = ({
         const preferred = (config?.[backend as AcpBackendAll] as Record<string, unknown>)?.preferredModelId as
           | string
           | undefined;
-        if (preferred) {
+        const cachedInfo = acpCachedModels[backend];
+        if (
+          preferred &&
+          (!cachedInfo?.availableModels?.length || cachedInfo.availableModels.some((model) => model.id === preferred))
+        ) {
           _setSelectedAcpModel(preferred);
         } else {
-          const cachedInfo = acpCachedModels[backend];
           _setSelectedAcpModel(cachedInfo?.currentModelId ?? null);
         }
       })

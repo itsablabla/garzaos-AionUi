@@ -437,6 +437,18 @@ describe('getTeamDefaultModelId', () => {
     expect(result).toBe('claude-haiku-3.5');
   });
 
+  it('falls back to currentModelId when preferredModelId is stale', () => {
+    const acpConfig = { droid: { preferredModelId: 'custom:Claude-Sonnet-4.6-(Garza)-0' } };
+    const cachedModels: Record<string, AcpModelInfo> = {
+      droid: makeAcpModelInfo({
+        currentModelId: 'custom:Garza-Sonnet-0',
+        availableModels: [{ id: 'custom:Garza-Sonnet-0', label: 'Garza Sonnet' }],
+      }),
+    };
+    const result = getTeamDefaultModelId('droid', cachedModels, acpConfig);
+    expect(result).toBe('custom:Garza-Sonnet-0');
+  });
+
   it('UT-18: returns undefined when both are absent', () => {
     const acpConfig = { claude: {} };
     const cachedModels: Record<string, AcpModelInfo> = {

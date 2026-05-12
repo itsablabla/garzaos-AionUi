@@ -227,6 +227,37 @@ describe('createConversationParams', () => {
     expect(params.extra.currentModelId).toBe('gpt-5-codex');
   });
 
+  it('ignores a stale preferred ACP model that is no longer advertised by Droid', async () => {
+    configGet.mockImplementation(async (key: string) => {
+      if (key === 'acp.config') {
+        return {
+          droid: {
+            preferredModelId: 'custom:Claude-Sonnet-4.6-(Garza)-0',
+          },
+        };
+      }
+      if (key === 'acp.cachedModels') {
+        return {
+          droid: {
+            currentModelId: 'custom:Garza-Sonnet-0',
+            availableModels: [{ id: 'custom:Garza-Sonnet-0', label: 'Garza Sonnet' }],
+          },
+        };
+      }
+      return undefined;
+    });
+
+    const params = await buildCliAgentParams(
+      {
+        backend: 'droid',
+        name: 'Factory Droid',
+      },
+      '/tmp/workspace'
+    );
+
+    expect(params.extra.currentModelId).toBe('custom:Garza-Sonnet-0');
+  });
+
   it('falls back to legacy yolo mode when preferred ACP mode is missing', async () => {
     configGet.mockImplementation(async (key: string) => {
       if (key === 'acp.config') {
