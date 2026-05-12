@@ -81,7 +81,7 @@ class AgentRegistry {
       available: true,
       backend: 'droid',
       cliPath: 'droid',
-      acpArgs: ['exec', '--model-mode', 'sonnet', '--output-format', 'acp'],
+      acpArgs: ['exec', '--output-format', 'acp'],
     };
   }
 

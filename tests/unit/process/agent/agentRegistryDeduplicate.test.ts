@@ -226,7 +226,7 @@ describe('AgentRegistry.deduplicate', () => {
       id: 'droid',
       kind: 'acp',
       backend: 'droid',
-      acpArgs: ['exec', '--model-mode', 'sonnet', '--output-format', 'acp'],
+      acpArgs: ['exec', '--output-format', 'acp'],
     });
     expect(agents[3]).toMatchObject({ id: 'replica', kind: 'replica', backend: 'replica' });
   });
