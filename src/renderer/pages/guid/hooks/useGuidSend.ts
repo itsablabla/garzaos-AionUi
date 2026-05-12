@@ -74,6 +74,17 @@ export type GuidSendResult = {
   isButtonDisabled: boolean;
 };
 
+export function resolveReplicaModeOptions(mode: string): {
+  planMode?: boolean;
+  thinkingLevel?: 'low' | 'medium' | 'high' | 'max';
+} {
+  if (mode === 'plan') return { planMode: true };
+  if (mode === 'low' || mode === 'medium' || mode === 'high' || mode === 'max') {
+    return { thinkingLevel: mode };
+  }
+  return {};
+}
+
 /**
  * Hook that manages the send logic for all conversation types (gemini/openclaw/nanobot/acp).
  */
@@ -395,6 +406,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           defaultFiles: files,
           enabledSkills: isPreset ? enabledSkills : undefined,
           excludeBuiltinSkills,
+          ...resolveReplicaModeOptions(selectedMode),
         },
       });
 

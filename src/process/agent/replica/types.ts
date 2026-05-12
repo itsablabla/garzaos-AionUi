@@ -40,7 +40,12 @@ export type ReplicaEngineEvent = {
   id?: string;
   ts?: string;
   type: string;
-  payload?: Record<string, unknown>;
+  payload?: Record<string, unknown> & {
+    chatId?: string;
+    messageId?: string;
+    message?: string;
+    event?: ReplicaAgentEvent;
+  };
 };
 
 type ClaudeContentBlock =
@@ -66,6 +71,7 @@ export type ReplicaAgentEvent = {
       content?: ClaudeContentBlock[];
     };
     content?: Array<{ type?: string; text?: string }>;
+    text?: string;
     call_id?: string;
     name?: string;
     arguments?: string;

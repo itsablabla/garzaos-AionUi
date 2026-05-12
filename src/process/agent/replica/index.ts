@@ -199,6 +199,11 @@ export class ReplicaAgent {
   }
 
   private handleEngineEvent(event: ReplicaEngineEvent): void {
+    if (event.payload?.chatId && event.payload.chatId !== this.chatId) {
+      this.chatId = event.payload.chatId;
+      this.config.onChatIdUpdate?.(event.payload.chatId);
+    }
+
     switch (event.type) {
       case 'chat.turn.accepted':
       case 'chat.turn.started':
@@ -215,6 +220,11 @@ export class ReplicaAgent {
         this.handleAgentEvent(event.payload?.event as ReplicaAgentEvent | undefined);
         break;
       case 'chat.turn.completed':
+        this.processing = false;
+        this.currentTextMsgId = null;
+        this.config.onSignalEvent({ type: 'finish', conversation_id: this.config.id, msg_id: uuid(), data: null });
+        break;
+      case 'chat.interrupted':
         this.processing = false;
         this.currentTextMsgId = null;
         this.config.onSignalEvent({ type: 'finish', conversation_id: this.config.id, msg_id: uuid(), data: null });
@@ -255,10 +265,12 @@ export class ReplicaAgent {
     }
 
     if (event.type === 'event_msg' && event.payload.type === 'agent_reasoning') {
-      const text = event.payload.content
-        ?.map((item) => item.text)
-        .filter(Boolean)
-        .join('\n');
+      const text =
+        event.payload.text ||
+        event.payload.content
+          ?.map((item) => item.text)
+          .filter(Boolean)
+          .join('\n');
       if (text) this.emitThought(text);
       return;
     }
