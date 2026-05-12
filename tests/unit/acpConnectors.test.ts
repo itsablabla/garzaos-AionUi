@@ -61,6 +61,14 @@ const ccSwitchMock = vi.hoisted(() => ({
 
 vi.mock('@process/services/ccSwitchModelSource', () => ccSwitchMock);
 
+vi.mock('@process/utils/deepSeekProviderConfig', () => ({
+  buildGooseDeepSeekEnv: vi.fn(() => ({
+    GOOSE_PROVIDER: 'openrouter',
+    GOOSE_MODEL: 'deepseek/deepseek-chat-v3.1',
+    OPENROUTER_API_KEY: 'test-openrouter-key',
+  })),
+}));
+
 import { execFile as execFileCb, spawn } from 'child_process';
 import { execFileSync } from 'child_process';
 import {
@@ -431,6 +439,24 @@ describe('spawnGenericBackend - detached process group', () => {
     );
     expect(result.isDetached).toBe(false);
     expect(mockChild.unref).not.toHaveBeenCalled();
+  });
+
+  it('injects DeepSeek OpenRouter env for Goose ACP backend', async () => {
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+
+    await spawnGenericBackend('goose', 'goose', '/cwd', ['acp']);
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      'goose',
+      ['acp'],
+      expect.objectContaining({
+        env: expect.objectContaining({
+          GOOSE_PROVIDER: 'openrouter',
+          GOOSE_MODEL: 'deepseek/deepseek-chat-v3.1',
+          OPENROUTER_API_KEY: 'test-openrouter-key',
+        }),
+      })
+    );
   });
 });
 

@@ -33,6 +33,7 @@ import {
 } from '@process/utils/shellEnv';
 import { readClaudeProviderEnvFromCcSwitch } from '@process/services/ccSwitchModelSource';
 import { mainWarn } from '@process/utils/mainLogger';
+import { buildGooseDeepSeekEnv } from '@process/utils/deepSeekProviderConfig';
 import { getPlatformServices } from '@/common/platform';
 
 const execFile = promisify(execFileCb);
@@ -535,6 +536,9 @@ export async function spawnGenericBackend(
   }
 
   const cleanEnv = await prepareCleanEnv();
+  if (backend === 'goose') {
+    Object.assign(cleanEnv, buildGooseDeepSeekEnv());
+  }
   if (customEnv) {
     Object.assign(cleanEnv, customEnv);
   }
