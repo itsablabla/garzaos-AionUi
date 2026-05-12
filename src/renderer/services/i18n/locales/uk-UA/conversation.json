@@ -67,7 +67,11 @@
     "today": "Сьогодні",
     "yesterday": "Вчора",
     "recent7Days": "Останні 7 днів",
-    "earlier": "Раніше"
+    "earlier": "Раніше",
+    "favorite": "Додати в обране",
+    "unfavorite": "Вилучити з обраного",
+    "favoriteFailed": "Не вдалося виконати дію з обраним",
+    "favoritesSection": "Обране"
   },
   "historySearch": {
     "tooltip": "Пошук повідомлень",
@@ -293,5 +297,43 @@
   "thinking": {
     "complete": "Роздуми завершено",
     "label": "Розмірковує..."
+  },
+  "sessions": {
+    "title": "Центр сесій",
+    "new": "Новий чат",
+    "searchPlaceholder": "Пошук за назвами сесій...",
+    "continue": "Продовжити",
+    "modifiedAt": "Змінено: {{time}}",
+    "createdAt": "Створено: {{time}}",
+    "loadFailed": "Не вдалося завантажити сесії",
+    "empty": "Сесій ще немає",
+    "emptySearch": "Сесій за пошуком не знайдено",
+    "startFirst": "Почати перший чат",
+    "recentLimitNote": "Показано 10 останніх сесій. Старіші сесії архівуються за датою створення.",
+    "archiveByDate": "Архів за датою створення",
+    "folderTitleWithDate": "Архів · {{date}}",
+    "count": "Сесій: {{count}}",
+    "folderSubtitleFallback": "Відкрити сесії за цю дату",
+    "viewAll": "Переглянути всі сесії",
+    "categoryLabel": "Категорія",
+    "categoryUpdateFailed": "Не вдалося оновити категорію",
+    "category": {
+      "none": "Без категорії",
+      "code": "Код",
+      "plan": "План",
+      "research": "Дослідження / каркас",
+      "debugging": "Налагодження",
+      "disposable": "Одноразове / сміття",
+      "reference": "Довідка"
+    },
+    "filter": {
+      "allStatuses": "Усі статуси",
+      "favorites": "Обране",
+      "pinned": "Закріплені",
+      "team": "Команда",
+      "allCategories": "Усі категорії",
+      "allBackends": "Усі агенти",
+      "datePlaceholder": "Дата: YYYY-MM-DD"
+    }
   }
 }

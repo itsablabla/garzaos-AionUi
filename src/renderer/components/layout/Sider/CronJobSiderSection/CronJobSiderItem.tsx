@@ -16,7 +16,10 @@ import type { ICronJob } from '@/common/adapter/ipcBridge';
 import type { TChatConversation } from '@/common/config/storage';
 import { ipcBridge } from '@/common';
 import { emitter } from '@/renderer/utils/emitter';
-import { isConversationPinned } from '@renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
+import {
+  isConversationFavorited,
+  isConversationPinned,
+} from '@renderer/pages/conversation/GroupedHistory/utils/groupingHelpers';
 import { refreshConversationCache } from '@/renderer/pages/conversation/utils/conversationCache';
 import { useCronJobConversations } from '@renderer/pages/cron/useCronJobs';
 import ConversationRow from '@renderer/pages/conversation/GroupedHistory/ConversationRow';
@@ -188,6 +191,33 @@ const CronJobSiderItem: React.FC<CronJobSiderItemProps> = ({
     [t]
   );
 
+  const handleToggleFavorite = useCallback(
+    async (conv: TChatConversation) => {
+      const favorited = isConversationFavorited(conv);
+      try {
+        const success = await ipcBridge.conversation.update.invoke({
+          id: conv.id,
+          updates: {
+            extra: {
+              favorited: !favorited,
+              favoritedAt: favorited ? undefined : Date.now(),
+            } as Partial<TChatConversation['extra']>,
+          } as Partial<TChatConversation>,
+          mergeExtra: true,
+        });
+        if (success) {
+          emitter.emit('chat.history.refresh');
+        } else {
+          Message.error(t('conversation.history.favoriteFailed'));
+        }
+      } catch (err) {
+        console.error('Failed to toggle favorite:', err);
+        Message.error(t('conversation.history.favoriteFailed'));
+      }
+    },
+    [t]
+  );
+
   const handleMenuVisibleChange = useCallback((conversationId: string, visible: boolean) => {
     setDropdownVisibleId(visible ? conversationId : null);
   }, []);
@@ -274,6 +304,7 @@ const CronJobSiderItem: React.FC<CronJobSiderItemProps> = ({
           onEditStart={handleEditStart}
           onDelete={handleDelete}
           onTogglePin={handleTogglePin}
+          onToggleFavorite={handleToggleFavorite}
           getJobStatus={() => 'none'}
         />
       </SortableSiderEntry>
@@ -290,6 +321,7 @@ const CronJobSiderItem: React.FC<CronJobSiderItemProps> = ({
       handleEditStart,
       handleDelete,
       handleTogglePin,
+      handleToggleFavorite,
     ]
   );
 

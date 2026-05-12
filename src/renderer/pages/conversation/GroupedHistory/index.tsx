@@ -9,13 +9,13 @@ import DirectorySelectionModal from '@/renderer/components/settings/DirectorySel
 import { CronJobIndicator, useCronJobsMap } from '@/renderer/pages/cron';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Button, Empty, Input, Modal } from '@arco-design/web-react';
+import { Button, Empty, Input, Modal, Tooltip } from '@arco-design/web-react';
 import { FolderOpen } from '@icon-park/react';
 import classNames from 'classnames';
 import { Down, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import WorkspaceCollapse from '../components/WorkspaceCollapse';
 import ConversationRow from './ConversationRow';
@@ -36,6 +36,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onBatchModeChange,
 }) => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { getJobStatus, markAsRead, setActiveConversation } = useCronJobsMap();
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set());
@@ -62,6 +63,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     hasCompletionUnread,
     expandedWorkspaces,
     pinnedConversations,
+    favoriteConversations,
     timelineSections,
     handleToggleWorkspace,
   } = useConversations();
@@ -88,6 +90,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     handleRenameConfirm,
     handleRenameCancel,
     handleTogglePin,
+    handleToggleFavorite,
     handleMenuVisibleChange,
     handleOpenMenu,
   } = useConversationActions({
@@ -146,6 +149,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onDelete: handleDeleteClick,
       onExport: handleExportConversation,
       onTogglePin: handleTogglePin,
+      onToggleFavorite: handleToggleFavorite,
       getJobStatus,
     }),
     [
@@ -165,6 +169,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleDeleteClick,
       handleExportConversation,
       handleTogglePin,
+      handleToggleFavorite,
       getJobStatus,
     ]
   );
@@ -176,8 +181,21 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
 
   // Collect all sortable IDs for the pinned section
   const pinnedIds = useMemo(() => pinnedConversations.map((c) => c.id), [pinnedConversations]);
+  const collapsedRecentConversations = useMemo(() => {
+    const timelineConversations = timelineSections.flatMap((section) =>
+      section.items.flatMap((item) => {
+        if (item.type === 'conversation' && item.conversation) return [item.conversation];
+        if (item.type === 'workspace' && item.workspaceGroup) return item.workspaceGroup.conversations;
+        return [];
+      })
+    );
 
-  if (timelineSections.length === 0 && pinnedConversations.length === 0) {
+    return [...pinnedConversations, ...favoriteConversations, ...timelineConversations]
+      .toSorted((a, b) => b.modifyTime - a.modifyTime)
+      .slice(0, 8);
+  }, [favoriteConversations, pinnedConversations, timelineSections]);
+
+  if (timelineSections.length === 0 && pinnedConversations.length === 0 && favoriteConversations.length === 0) {
     return (
       <div className='py-48px flex-center'>
         <Empty description={t('conversation.history.noHistory')} />
@@ -346,57 +364,103 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       )}
 
       <div>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          {pinnedConversations.length > 0 && (
-            <div className='mb-8px min-w-0'>
-              {!collapsed && (
+        {collapsed ? (
+          <div className='min-w-0'>
+            {collapsedRecentConversations.map((conversation) => renderConversation(conversation))}
+            <Tooltip
+              content={t('conversation.sessions.viewAll')}
+              position='right'
+              {...(tooltipEnabled ? undefined : { disabled: true })}
+            >
+              <div
+                className='chat-history__item h-40px rd-8px flex items-center justify-center group cursor-pointer relative overflow-hidden shrink-0 conversation-item transition-colors hover:bg-[rgba(var(--primary-6),0.14)] text-t-secondary'
+                onClick={() => {
+                  void navigate('/sessions');
+                  onSessionClick?.();
+                }}
+              >
+                <Right theme='outline' size={18} />
+              </div>
+            </Tooltip>
+          </div>
+        ) : (
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              {pinnedConversations.length > 0 && (
+                <div className='mb-8px min-w-0'>
+                  <div
+                    className='flex items-center px-12px py-8px cursor-pointer select-none sticky top-0 z-10 bg-fill-2'
+                    onClick={() => toggleSection('pinned')}
+                  >
+                    <span className='text-13px text-t-secondary font-bold leading-20px'>
+                      {t('conversation.history.pinnedSection')}
+                    </span>
+                    <div className='ml-auto h-20px w-20px rd-4px flex items-center justify-center hover:bg-fill-3 transition-all shrink-0 text-t-secondary'>
+                      {collapsedSections.has('pinned') ? (
+                        <Right theme='outline' size={12} />
+                      ) : (
+                        <Down theme='outline' size={12} />
+                      )}
+                    </div>
+                  </div>
+                  {!collapsedSections.has('pinned') && (
+                    <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
+                      <div className='min-w-0'>
+                        {pinnedConversations.map((conversation) => {
+                          const props = getConversationRowProps(conversation);
+                          return isDragEnabled ? (
+                            <SortableConversationRow key={conversation.id} {...props} />
+                          ) : (
+                            <ConversationRow key={conversation.id} {...props} />
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  )}
+                </div>
+              )}
+
+              <DragOverlay dropAnimation={null}>
+                {activeId && activeConversation ? <DragOverlayContent conversation={activeConversation} /> : null}
+              </DragOverlay>
+            </DndContext>
+
+            {favoriteConversations.length > 0 && (
+              <div className='mb-8px min-w-0'>
                 <div
                   className='flex items-center px-12px py-8px cursor-pointer select-none sticky top-0 z-10 bg-fill-2'
-                  onClick={() => toggleSection('pinned')}
+                  onClick={() => toggleSection('favorites')}
                 >
                   <span className='text-13px text-t-secondary font-bold leading-20px'>
-                    {t('conversation.history.pinnedSection')}
+                    {t('conversation.history.favoritesSection')}
                   </span>
                   <div className='ml-auto h-20px w-20px rd-4px flex items-center justify-center hover:bg-fill-3 transition-all shrink-0 text-t-secondary'>
-                    {collapsedSections.has('pinned') ? (
+                    {collapsedSections.has('favorites') ? (
                       <Right theme='outline' size={12} />
                     ) : (
                       <Down theme='outline' size={12} />
                     )}
                   </div>
                 </div>
-              )}
-              {!collapsedSections.has('pinned') && (
-                <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
+                {!collapsedSections.has('favorites') && (
                   <div className='min-w-0'>
-                    {pinnedConversations.map((conversation) => {
-                      const props = getConversationRowProps(conversation);
-                      return isDragEnabled ? (
-                        <SortableConversationRow key={conversation.id} {...props} />
-                      ) : (
-                        <ConversationRow key={conversation.id} {...props} />
-                      );
-                    })}
+                    {favoriteConversations.map((conversation) => renderConversation(conversation))}
                   </div>
-                </SortableContext>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </>
+        )}
 
-          <DragOverlay dropAnimation={null}>
-            {activeId && activeConversation ? <DragOverlayContent conversation={activeConversation} /> : null}
-          </DragOverlay>
-        </DndContext>
-
-        {timelineSections.map((section) => (
-          <div key={section.timeline} className='mb-8px min-w-0'>
-            {!collapsed && (
+        {!collapsed &&
+          timelineSections.map((section) => (
+            <div key={section.timeline} className='mb-8px min-w-0'>
               <div
                 className='flex items-center px-12px py-8px cursor-pointer select-none sticky top-0 z-10 bg-fill-2'
                 onClick={() => toggleSection(section.timeline)}
@@ -410,42 +474,41 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                   )}
                 </div>
               </div>
-            )}
 
-            {!collapsedSections.has(section.timeline) &&
-              section.items.map((item) => {
-                if (item.type === 'workspace' && item.workspaceGroup) {
-                  const group = item.workspaceGroup;
-                  return (
-                    <div key={group.workspace} className='min-w-0'>
-                      <WorkspaceCollapse
-                        expanded={expandedWorkspaces.includes(group.workspace)}
-                        onToggle={() => handleToggleWorkspace(group.workspace)}
-                        siderCollapsed={collapsed}
-                        header={
-                          <div className='flex items-center gap-8px text-14px min-w-0'>
-                            <span className='font-medium truncate flex-1 text-t-primary min-w-0'>
-                              {group.displayName}
-                            </span>
+              {!collapsedSections.has(section.timeline) &&
+                section.items.map((item) => {
+                  if (item.type === 'workspace' && item.workspaceGroup) {
+                    const group = item.workspaceGroup;
+                    return (
+                      <div key={group.workspace} className='min-w-0'>
+                        <WorkspaceCollapse
+                          expanded={expandedWorkspaces.includes(group.workspace)}
+                          onToggle={() => handleToggleWorkspace(group.workspace)}
+                          siderCollapsed={collapsed}
+                          header={
+                            <div className='flex items-center gap-8px text-14px min-w-0'>
+                              <span className='font-medium truncate flex-1 text-t-primary min-w-0'>
+                                {group.displayName}
+                              </span>
+                            </div>
+                          }
+                        >
+                          <div className={classNames('flex flex-col gap-2px min-w-0', { 'mt-2px': !collapsed })}>
+                            {group.conversations.map((conversation) => renderConversation(conversation))}
                           </div>
-                        }
-                      >
-                        <div className={classNames('flex flex-col gap-2px min-w-0', { 'mt-2px': !collapsed })}>
-                          {group.conversations.map((conversation) => renderConversation(conversation))}
-                        </div>
-                      </WorkspaceCollapse>
-                    </div>
-                  );
-                }
+                        </WorkspaceCollapse>
+                      </div>
+                    );
+                  }
 
-                if (item.type === 'conversation' && item.conversation) {
-                  return renderConversation(item.conversation);
-                }
+                  if (item.type === 'conversation' && item.conversation) {
+                    return renderConversation(item.conversation);
+                  }
 
-                return null;
-              })}
-          </div>
-        ))}
+                  return null;
+                })}
+            </div>
+          ))}
       </div>
     </>
   );

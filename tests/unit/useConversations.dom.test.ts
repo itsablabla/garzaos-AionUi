@@ -44,6 +44,7 @@ vi.mock('../../src/renderer/hooks/context/ConversationHistoryContext', () => ({
     setActiveConversation: mockSetActiveConversation,
     groupedHistory: {
       pinnedConversations: [],
+      favoriteConversations: [],
       timelineSections: testState.sections,
     },
   }),
@@ -66,6 +67,7 @@ vi.mock('../../src/renderer/pages/conversation/GroupedHistory/hooks/useConversat
 vi.mock('../../src/renderer/pages/conversation/GroupedHistory/utils/groupingHelpers', () => ({
   buildGroupedHistory: () => ({
     pinnedConversations: [],
+    favoriteConversations: [],
     timelineSections: testState.sections,
   }),
 }));

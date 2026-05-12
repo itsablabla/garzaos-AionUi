@@ -67,7 +67,11 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "刪除成功",
-    "deleteFailed": "刪除失敗"
+    "deleteFailed": "刪除失敗",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏",
+    "favoriteFailed": "收藏操作失敗",
+    "favoritesSection": "收藏"
   },
   "historySearch": {
     "tooltip": "搜尋訊息",
@@ -297,5 +301,43 @@
   },
   "skills": {
     "loaded": "已載入技能"
+  },
+  "sessions": {
+    "title": "會話中心",
+    "new": "新對話",
+    "searchPlaceholder": "搜尋會話標題...",
+    "continue": "繼續會話",
+    "modifiedAt": "修改：{{time}}",
+    "createdAt": "建立：{{time}}",
+    "loadFailed": "載入會話失敗",
+    "empty": "暫無會話",
+    "emptySearch": "沒有符合的會話",
+    "startFirst": "開始第一個對話",
+    "recentLimitNote": "顯示最近 10 個會話。更早的會話按建立日期歸檔。",
+    "archiveByDate": "按建立日期歸檔",
+    "folderTitleWithDate": "歸檔 · {{date}}",
+    "count": "{{count}} 個會話",
+    "folderSubtitleFallback": "點擊查看當天會話",
+    "viewAll": "查看全部會話",
+    "categoryLabel": "分類",
+    "categoryUpdateFailed": "更新分類失敗",
+    "category": {
+      "none": "未分類",
+      "code": "程式碼",
+      "plan": "計畫",
+      "research": "研究 / 腳手架",
+      "debugging": "除錯",
+      "disposable": "一次性 / 廢棄",
+      "reference": "參考"
+    },
+    "filter": {
+      "allStatuses": "全部狀態",
+      "favorites": "收藏",
+      "pinned": "置頂",
+      "team": "團隊",
+      "allCategories": "全部分類",
+      "allBackends": "全部代理",
+      "datePlaceholder": "日期：YYYY-MM-DD"
+    }
   }
 }

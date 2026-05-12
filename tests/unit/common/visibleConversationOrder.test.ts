@@ -62,6 +62,7 @@ describe('buildVisibleConversationIds', () => {
 
     const visibleConversationIds = buildVisibleConversationIds({
       pinnedConversations: [createConversation('pinned-1'), createConversation('pinned-2')],
+      favoriteConversations: [],
       timelineSections,
       expandedWorkspaces: ['/workspace/project-a'],
       siderCollapsed: false,
@@ -70,9 +71,33 @@ describe('buildVisibleConversationIds', () => {
     expect(visibleConversationIds).toEqual(['pinned-1', 'pinned-2', 'direct-1', 'ws-1', 'ws-2', 'direct-2']);
   });
 
+  it('keeps favorite conversations after pinned conversations', () => {
+    const visibleConversationIds = buildVisibleConversationIds({
+      pinnedConversations: [createConversation('pinned-1')],
+      favoriteConversations: [createConversation('favorite-1')],
+      timelineSections: [
+        {
+          timeline: 'Today',
+          items: [
+            {
+              type: 'conversation',
+              time: 1,
+              conversation: createConversation('direct-1'),
+            },
+          ],
+        },
+      ],
+      expandedWorkspaces: [],
+      siderCollapsed: false,
+    });
+
+    expect(visibleConversationIds).toEqual(['pinned-1', 'favorite-1', 'direct-1']);
+  });
+
   it('skips conversations inside collapsed workspace groups', () => {
     const visibleConversationIds = buildVisibleConversationIds({
       pinnedConversations: [],
+      favoriteConversations: [],
       timelineSections: [
         {
           timeline: 'Today',
@@ -95,6 +120,7 @@ describe('buildVisibleConversationIds', () => {
   it('includes workspace conversations when the sidebar is collapsed', () => {
     const visibleConversationIds = buildVisibleConversationIds({
       pinnedConversations: [],
+      favoriteConversations: [],
       timelineSections: [
         {
           timeline: 'Today',

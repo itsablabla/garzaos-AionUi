@@ -17,6 +17,11 @@ export const isConversationPinned = (conversation: TChatConversation): boolean =
   return Boolean(extra?.pinned);
 };
 
+export const isConversationFavorited = (conversation: TChatConversation): boolean => {
+  const extra = conversation.extra as { favorited?: boolean } | undefined;
+  return Boolean(extra?.favorited);
+};
+
 export const isCronJobConversation = (conversation: TChatConversation): boolean => {
   const extra = conversation.extra as { cronJobId?: string } | undefined;
   return Boolean(extra?.cronJobId);
@@ -117,8 +122,15 @@ export const buildGroupedHistory = (
     (conversation) => !isConversationPinned(conversation) && !isCronJobConversation(conversation)
   );
 
+  const favoriteConversations = normalConversations
+    .filter((conversation) => isConversationFavorited(conversation))
+    .toSorted((a, b) => b.modifyTime - a.modifyTime);
+
+  const timelineConversations = normalConversations.filter((conversation) => !isConversationFavorited(conversation));
+
   return {
     pinnedConversations,
-    timelineSections: groupConversationsByWorkspace(normalConversations, t),
+    favoriteConversations,
+    timelineSections: groupConversationsByWorkspace(timelineConversations, t),
   };
 };

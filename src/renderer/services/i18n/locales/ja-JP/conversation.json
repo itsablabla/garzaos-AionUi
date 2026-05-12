@@ -67,7 +67,11 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "削除しました",
-    "deleteFailed": "削除に失敗しました"
+    "deleteFailed": "削除に失敗しました",
+    "favorite": "お気に入り",
+    "unfavorite": "お気に入り解除",
+    "favoriteFailed": "お気に入り操作に失敗しました",
+    "favoritesSection": "お気に入り"
   },
   "historySearch": {
     "tooltip": "メッセージを検索",
@@ -297,5 +301,43 @@
   },
   "skills": {
     "loaded": "ロード済みスキル"
+  },
+  "sessions": {
+    "title": "セッションセンター",
+    "new": "新しいチャット",
+    "searchPlaceholder": "セッションタイトルを検索...",
+    "continue": "続行",
+    "modifiedAt": "更新: {{time}}",
+    "createdAt": "作成: {{time}}",
+    "loadFailed": "セッションの読み込みに失敗しました",
+    "empty": "セッションはありません",
+    "emptySearch": "一致するセッションはありません",
+    "startFirst": "最初のチャットを開始",
+    "recentLimitNote": "最新10件のセッションを表示します。古いセッションは作成日別にアーカイブされます。",
+    "archiveByDate": "作成日別アーカイブ",
+    "folderTitleWithDate": "アーカイブ · {{date}}",
+    "count": "{{count}} 件のセッション",
+    "folderSubtitleFallback": "この日のセッションを表示",
+    "viewAll": "すべてのセッションを表示",
+    "categoryLabel": "カテゴリ",
+    "categoryUpdateFailed": "カテゴリの更新に失敗しました",
+    "category": {
+      "none": "カテゴリなし",
+      "code": "コード",
+      "plan": "計画",
+      "research": "調査 / スキャフォールド",
+      "debugging": "デバッグ",
+      "disposable": "使い捨て / 破棄",
+      "reference": "参照"
+    },
+    "filter": {
+      "allStatuses": "すべての状態",
+      "favorites": "お気に入り",
+      "pinned": "ピン留め",
+      "team": "チーム",
+      "allCategories": "すべてのカテゴリ",
+      "allBackends": "すべてのエージェント",
+      "datePlaceholder": "日付: YYYY-MM-DD"
+    }
   }
 }

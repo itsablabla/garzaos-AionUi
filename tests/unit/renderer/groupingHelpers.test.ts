@@ -390,8 +390,52 @@ describe('buildGroupedHistory', () => {
 
     expect(result.pinnedConversations).toHaveLength(1);
     expect(result.pinnedConversations[0].id).toBe('conv-1');
+    expect(result.favoriteConversations).toEqual([]);
     expect(result.timelineSections[0].items).toHaveLength(1);
     expect(result.timelineSections[0].items[0].conversation?.id).toBe('conv-2');
+  });
+
+  it('separates favorite conversations without replacing pinned or normal groups', () => {
+    const conversations: TChatConversation[] = [
+      {
+        id: 'conv-1',
+        title: 'Pinned favorite',
+        createdAt: 1000,
+        updatedAt: 1000,
+        extra: { pinned: true, favorited: true, pinnedAt: 2000 },
+        userMsgCount: 0,
+      },
+      {
+        id: 'conv-2',
+        title: 'Favorite newer',
+        createdAt: 2000,
+        updatedAt: 4000,
+        extra: { favorited: true },
+        userMsgCount: 0,
+      },
+      {
+        id: 'conv-3',
+        title: 'Favorite older',
+        createdAt: 3000,
+        updatedAt: 3000,
+        extra: { favorited: true },
+        userMsgCount: 0,
+      },
+      {
+        id: 'conv-4',
+        title: 'Normal',
+        createdAt: 5000,
+        updatedAt: 5000,
+        extra: { workspace: '/path/a', customWorkspace: true },
+        userMsgCount: 0,
+      },
+    ];
+
+    const result = buildGroupedHistory(conversations, mockT);
+
+    expect(result.pinnedConversations.map((conversation) => conversation.id)).toEqual(['conv-1']);
+    expect(result.favoriteConversations.map((conversation) => conversation.id)).toEqual(['conv-2', 'conv-3']);
+    expect(result.timelineSections[0].items[0].type).toBe('workspace');
   });
 
   it('excludes cron job conversations from normal conversations', () => {
