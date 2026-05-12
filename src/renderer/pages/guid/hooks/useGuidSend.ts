@@ -16,6 +16,10 @@ import { useCallback, useRef } from 'react';
 import { type TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import type { AcpBackend, AvailableAgent, EffectiveAgentInfo } from '../types';
+import {
+  DEFAULT_REPLICA_MODEL,
+  resolveReplicaCodingAgent as resolveReplicaCodingAgentForModel,
+} from '@/common/types/replica';
 
 export type GuidSendDeps = {
   // Input state
@@ -73,6 +77,22 @@ export type GuidSendResult = {
   sendMessageHandler: () => void;
   isButtonDisabled: boolean;
 };
+
+export function resolveReplicaModeOptions(mode: string): {
+  planMode?: boolean;
+  thinkingLevel?: 'low' | 'medium' | 'high' | 'max';
+} {
+  if (mode === 'plan') return { planMode: true };
+  if (mode === 'low' || mode === 'medium' || mode === 'high' || mode === 'max') {
+    return { thinkingLevel: mode };
+  }
+  return {};
+}
+
+export function resolveReplicaCodingAgent(modelId: string | null | undefined): 'claude' | 'codex' | undefined {
+  if (!modelId) return undefined;
+  return resolveReplicaCodingAgentForModel(modelId);
+}
 
 /**
  * Hook that manages the send logic for all conversation types (gemini/openclaw/nanobot/acp).
@@ -364,6 +384,72 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         alert(`Failed to create Aion CLI conversation: ${errorMessage}`);
+        throw error;
+      }
+      return;
+    }
+
+    // Replicas path — native API-key agent with cloud-hosted streaming events
+    if (selectedAgent === 'replica' || (isPreset && finalEffectiveAgentType === 'replica')) {
+      const replicaAgentInfo = agentInfo || findAgentByKey(selectedAgentKey);
+      const replicaModel = selectedAcpModel || DEFAULT_REPLICA_MODEL;
+      const replicaConversationParams = buildAgentConversationParams({
+        backend: 'replica',
+        name: input,
+        agentName: replicaAgentInfo?.name || 'Replicas',
+        presetAssistantId,
+        workspace: finalWorkspace,
+        model: currentModel!,
+        customAgentId: replicaAgentInfo?.customAgentId,
+        customWorkspace: isCustomWorkspace,
+        isPreset,
+        presetAgentType: finalEffectiveAgentType,
+        presetResources: isPreset
+          ? {
+              rules: presetRules,
+              enabledSkills,
+              excludeBuiltinSkills,
+            }
+          : undefined,
+        currentModelId: replicaModel,
+        extra: {
+          defaultFiles: files,
+          enabledSkills: isPreset ? enabledSkills : undefined,
+          excludeBuiltinSkills,
+          codingAgent: resolveReplicaCodingAgent(replicaModel),
+          ...resolveReplicaModeOptions(selectedMode),
+        },
+      });
+
+      try {
+        const conversation = await ipcBridge.conversation.create.invoke(replicaConversationParams);
+        if (!conversation || !conversation.id) {
+          alert(
+            'Failed to create Replicas conversation. Please ensure REPLICAS_API_KEY, REPLICATE_API_TOKEN, or REPLICATE_API_KEY is configured.'
+          );
+          return;
+        }
+
+        if (isCustomWorkspace) {
+          closeAllTabs();
+          updateWorkspaceTime(finalWorkspace);
+          openTab(conversation);
+        }
+
+        emitter.emit('chat.history.refresh');
+
+        const workspacePath = conversation.extra?.workspace || '';
+        const displayMessage = buildDisplayMessage(input, files, workspacePath);
+        const initialMessage = {
+          input: displayMessage,
+          files: files.length > 0 ? files : undefined,
+        };
+        sessionStorage.setItem(`replica_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
+
+        await navigate(`/conversation/${conversation.id}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        alert(`Failed to create Replicas conversation: ${errorMessage}`);
         throw error;
       }
       return;

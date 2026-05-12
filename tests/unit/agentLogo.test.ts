@@ -7,6 +7,7 @@ vi.mock('@/renderer/assets/logos/ai-china/qwen.svg', () => ({ default: 'qwen.svg
 vi.mock('@/renderer/assets/logos/tools/coding/codex.svg', () => ({ default: 'codex.svg' }));
 vi.mock('@/renderer/assets/logos/tools/coding/codebuddy.svg', () => ({ default: 'codebuddy.svg' }));
 vi.mock('@/renderer/assets/logos/brand/droid.svg', () => ({ default: 'droid.svg' }));
+vi.mock('@/renderer/assets/logos/brand/aion.svg', () => ({ default: 'aion.svg' }));
 vi.mock('@/renderer/assets/logos/tools/goose.svg', () => ({ default: 'goose.svg' }));
 vi.mock('@/renderer/assets/logos/brand/auggie.svg', () => ({ default: 'auggie.svg' }));
 vi.mock('@/renderer/assets/logos/ai-china/kimi.svg', () => ({ default: 'kimi.svg' }));
@@ -45,6 +46,7 @@ describe('agentLogo', () => {
       expect(getAgentLogo('auggie')).toBe('auggie.svg');
       expect(getAgentLogo('goose')).toBe('goose.svg');
       expect(getAgentLogo('copilot')).toBe('github.svg');
+      expect(getAgentLogo('replica')).toBe('aion.svg');
     });
   });
 

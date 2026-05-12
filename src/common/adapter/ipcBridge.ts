@@ -627,6 +627,10 @@ export const database = {
     import('../types/database').IMessageSearchResponse,
     { keyword: string; page?: number; pageSize?: number }
   >('database.search-conversation-messages'),
+  searchConversationsByName: bridge.buildProvider<
+    import('../types/database').IMessageSearchResponse,
+    { keyword: string; page?: number; pageSize?: number }
+  >('database.search-conversations-by-name'),
 };
 
 export const previewHistory = {
@@ -922,7 +926,7 @@ export interface IConfirmMessageParams {
 }
 
 export interface ICreateConversationParams {
-  type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'remote' | 'aionrs';
+  type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'remote' | 'aionrs' | 'replica';
   id?: string;
   name?: string;
   model: TProviderWithModel;
@@ -974,6 +978,24 @@ export interface ICreateConversationParams {
     isHealthCheck?: boolean;
     /** Remote agent config ID (FK to remote_agents table) — required when type='remote' */
     remoteAgentId?: string;
+    /** Replicas environment ID used when creating a new replica workspace */
+    environmentId?: string;
+    /** Deprecated Replicas repository set fallback when no environment ID is configured */
+    repositorySetId?: string;
+    /** Deprecated Replicas repository IDs fallback when no environment ID is configured */
+    repositoryIds?: string[];
+    /** Existing Replicas workspace ID for resume */
+    replicaId?: string;
+    /** Existing Replicas chat ID for resume */
+    chatId?: string;
+    /** Replicas API key override; prefer runtime env vars for secrets */
+    apiKey?: string;
+    /** Replicas API base URL override */
+    apiBaseUrl?: string;
+    /** Replicas coding agent and model options */
+    codingAgent?: 'claude' | 'codex';
+    thinkingLevel?: 'low' | 'medium' | 'high' | 'max';
+    planMode?: boolean;
     /** Extra skill directory paths to symlink into workspace (e.g. cron job skill dirs) */
     extraSkillPaths?: string[];
     /** Builtin skill names to exclude from auto-injection (e.g. 'cron' for cron-spawned conversations) */

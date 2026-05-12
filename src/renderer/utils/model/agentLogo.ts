@@ -58,6 +58,7 @@ const AGENT_LOGO_MAP = {
   vibe: MistralLogo,
   nanobot: NanobotLogo,
   remote: OpenClawLogo,
+  replica: AionLogo,
   qoder: QoderLogo,
   cursor: CursorLogo,
 } as const satisfies Record<string, string>;

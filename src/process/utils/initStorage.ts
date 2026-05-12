@@ -33,6 +33,7 @@ import {
 import { getDatabase } from '../services/database/export';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
 import { migrateFromElectronConfig, importConfigFromFile } from './configMigration';
+import { ensureDeepSeekProviderConfig } from './deepSeekProviderConfig';
 import {
   BUILTIN_IMAGE_GEN_ID,
   BUILTIN_IMAGE_GEN_LEGACY_NAMES,
@@ -884,6 +885,10 @@ const initStorage = async () => {
     console.error('[AionUi] Failed to initialize default MCP servers:', error);
   }
   mark('4.1 MCP defaults');
+
+  // 4.1.1 Add DeepSeek/OpenRouter provider from environment when configured.
+  await ensureDeepSeekProviderConfig(configFile as unknown as Parameters<typeof ensureDeepSeekProviderConfig>[0]);
+  mark('4.1.1 deepSeekProvider');
 
   // 4.2 Ensure built-in MCP servers exist and are up-to-date
   await ensureBuiltinMcpServers();

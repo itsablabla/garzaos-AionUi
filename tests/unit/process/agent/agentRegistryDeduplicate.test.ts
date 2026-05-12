@@ -171,15 +171,37 @@ describe('AgentRegistry.deduplicate', () => {
     expect(claudeAgents[0].isExtension).toBeUndefined();
   });
 
-  it('returns aionrs + gemini for empty sub-detector results', async () => {
+  it('hides deprecated builtin ACP agents from the available agents list', async () => {
+    mockDetectBuiltinAgents.mockResolvedValue([
+      makeAcpAgent({ id: 'codebuddy', name: 'CodeBuddy', backend: 'codebuddy', cliPath: 'codebuddy' }),
+      makeAcpAgent({ id: 'auggie', name: 'Augment Code', backend: 'auggie', cliPath: 'auggie' }),
+      makeAcpAgent({ id: 'kimi', name: 'Kimi CLI', backend: 'kimi', cliPath: 'kimi' }),
+      makeAcpAgent({ id: 'copilot', name: 'GitHub Copilot', backend: 'copilot', cliPath: 'copilot' }),
+      makeAcpAgent({ id: 'qoder', name: 'Qoder CLI', backend: 'qoder', cliPath: 'qodercli' }),
+      makeAcpAgent({ id: 'vibe', name: 'Mistral Vibe', backend: 'vibe', cliPath: 'vibe-acp' }),
+      makeAcpAgent({ id: 'cursor', name: 'Cursor Agent', backend: 'cursor', cliPath: 'agent' }),
+      makeAcpAgent({ id: 'kiro', name: 'Kiro', backend: 'kiro', cliPath: 'kiro-cli' }),
+      makeAcpAgent({ id: 'claude', name: 'Claude Code', backend: 'claude', cliPath: 'claude' }),
+    ]);
+
+    const registry = await createFreshRegistry();
+    await registry.initialize();
+    const backends = registry.getDetectedAgents().map((agent) => agent.backend);
+
+    expect(backends).toEqual(['aionrs', 'gemini', 'droid', 'replica', 'claude']);
+  });
+
+  it('returns always-present agents for empty sub-detector results', async () => {
     const registry = await createFreshRegistry();
     await registry.initialize();
     const agents = registry.getDetectedAgents();
 
-    // Only the always-present agents
-    expect(agents).toHaveLength(2);
+    // Always-present agents include native API-key engines and Droid bridge entry.
+    expect(agents).toHaveLength(4);
     expect(agents[0].backend).toBe('aionrs');
     expect(agents[1].backend).toBe('gemini');
+    expect(agents[2]).toMatchObject({ id: 'droid', kind: 'acp', backend: 'droid' });
+    expect(agents[3]).toMatchObject({ id: 'replica', kind: 'replica', backend: 'replica' });
   });
 
   it('returns a single agent unchanged (no false dedup)', async () => {
@@ -191,9 +213,9 @@ describe('AgentRegistry.deduplicate', () => {
     await registry.initialize();
     const agents = registry.getDetectedAgents();
 
-    // aionrs + gemini + codex
-    expect(agents).toHaveLength(3);
-    expect(agents[2]).toMatchObject({ id: 'codex', backend: 'codex' });
+    // aionrs + gemini + droid + replica + codex
+    expect(agents).toHaveLength(5);
+    expect(agents[4]).toMatchObject({ id: 'codex', backend: 'codex' });
   });
 
   it('keeps multiple remote agents alongside a single non-remote backend', async () => {
@@ -209,8 +231,8 @@ describe('AgentRegistry.deduplicate', () => {
     await registry.initialize();
     const agents = registry.getDetectedAgents();
 
-    // aionrs + gemini + claude + 2 remotes
-    expect(agents).toHaveLength(5);
+    // aionrs + gemini + droid + replica + claude + 2 remotes
+    expect(agents).toHaveLength(7);
     const remoteAgents = agents.filter((a) => a.kind === 'remote');
     expect(remoteAgents).toHaveLength(2);
     const claudeAgents = agents.filter((a) => a.backend === 'claude');

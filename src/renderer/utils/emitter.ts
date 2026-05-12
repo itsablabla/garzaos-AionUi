@@ -45,6 +45,10 @@ interface EventTypes {
   'remote.selected.file.append': [Array<string | FileOrFolderItem>];
   'remote.selected.file.clear': void;
   'remote.workspace.refresh': void;
+  'replica.selected.file': [Array<string | FileOrFolderItem>];
+  'replica.selected.file.append': [Array<string | FileOrFolderItem>];
+  'replica.selected.file.clear': void;
+  'replica.workspace.refresh': void;
   'chat.history.refresh': void;
   // 会话删除事件 / Conversation deletion event
   'conversation.deleted': [string]; // conversationId

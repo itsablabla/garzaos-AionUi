@@ -264,6 +264,8 @@ export type TChatConversation =
         isHealthCheck?: boolean;
         /** Cron job ID that spawned this conversation */
         cronJobId?: string;
+        /** 自定义分组名称 / Custom group name */
+        groupName?: string;
       }
     >
   | Omit<
@@ -311,6 +313,8 @@ export type TChatConversation =
           isHealthCheck?: boolean;
           /** Cron job ID that spawned this conversation */
           cronJobId?: string;
+          /** 自定义分组名称 / Custom group name */
+          groupName?: string;
         }
       >,
       'model'
@@ -342,6 +346,8 @@ export type TChatConversation =
           isHealthCheck?: boolean;
           /** Cron job ID that spawned this conversation */
           cronJobId?: string;
+          /** 自定义分组名称 / Custom group name */
+          groupName?: string;
         }
       >,
       'model'
@@ -389,6 +395,8 @@ export type TChatConversation =
           isHealthCheck?: boolean;
           /** Cron job ID that spawned this conversation */
           cronJobId?: string;
+          /** 自定义分组名称 / Custom group name */
+          groupName?: string;
         }
       >,
       'model'
@@ -441,6 +449,36 @@ export type TChatConversation =
           isHealthCheck?: boolean;
           /** Cron job ID that spawned this conversation */
           cronJobId?: string;
+          /** 自定义分组名称 / Custom group name */
+          groupName?: string;
+        }
+      >,
+      'model'
+    >
+  | Omit<
+      IChatConversation<
+        'replica',
+        {
+          workspace?: string;
+          customWorkspace?: boolean;
+          replicaId?: string;
+          chatId?: string;
+          environmentId?: string;
+          repositorySetId?: string;
+          repositoryIds?: string[];
+          apiKey?: string;
+          apiBaseUrl?: string;
+          model?: string;
+          codingAgent?: 'claude' | 'codex';
+          thinkingLevel?: 'low' | 'medium' | 'high' | 'max';
+          planMode?: boolean;
+          enabledSkills?: string[];
+          loadedSkills?: Array<{ name: string; description: string }>;
+          presetAssistantId?: string;
+          pinned?: boolean;
+          pinnedAt?: number;
+          isHealthCheck?: boolean;
+          cronJobId?: string;
         }
       >,
       'model'
@@ -475,6 +513,8 @@ export type TChatConversation =
         lastTokenUsage?: TokenUsageData;
         /** Cron job ID that spawned this conversation */
         cronJobId?: string;
+        /** 自定义分组名称 / Custom group name */
+        groupName?: string;
       }
     >;
 

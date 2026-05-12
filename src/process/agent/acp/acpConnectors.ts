@@ -21,6 +21,7 @@ import {
   CODEBUDDY_ACP_NPX_PACKAGE,
   CODEX_ACP_BRIDGE_VERSION,
   CODEX_ACP_NPX_PACKAGE,
+  DROID_ACP_NPX_PACKAGE,
 } from '@/common/types/acpTypes';
 import {
   findSuitableNodeBin,
@@ -32,6 +33,7 @@ import {
 } from '@process/utils/shellEnv';
 import { readClaudeProviderEnvFromCcSwitch } from '@process/services/ccSwitchModelSource';
 import { mainWarn } from '@process/utils/mainLogger';
+import { buildGooseDeepSeekEnv } from '@process/utils/deepSeekProviderConfig';
 import { getPlatformServices } from '@/common/platform';
 
 const execFile = promisify(execFileCb);
@@ -508,6 +510,12 @@ async function prepareCodebuddy(): Promise<NpxPrepareResult> {
   };
 }
 
+/** Prepare clean env + resolve npx for the Droid ACP bridge. */
+async function prepareDroid(): Promise<NpxPrepareResult> {
+  const cleanEnv = await prepareCleanEnv();
+  return { cleanEnv, npxCommand: resolveNpxPath(cleanEnv) };
+}
+
 /**
  * Spawn a generic ACP backend with clean env and Node version check.
  * Many generic backends are Node.js CLIs (#!/usr/bin/env node) that break
@@ -528,6 +536,9 @@ export async function spawnGenericBackend(
   }
 
   const cleanEnv = await prepareCleanEnv();
+  if (backend === 'goose') {
+    Object.assign(cleanEnv, buildGooseDeepSeekEnv());
+  }
   if (customEnv) {
     Object.assign(cleanEnv, customEnv);
   }
@@ -723,6 +734,18 @@ export function connectCodebuddy(workingDir: string, hooks: NpxConnectHooks): Pr
     workingDir,
     ...hooks,
     extraArgs: ['--acp'],
+    detached: process.platform !== 'win32',
+  });
+}
+
+/** Connect to Factory Droid through the Droid ACP bridge via npx. */
+export function connectDroid(workingDir: string, hooks: NpxConnectHooks): Promise<void> {
+  return connectNpxBackend({
+    backend: 'droid',
+    npxPackage: DROID_ACP_NPX_PACKAGE,
+    prepareFn: prepareDroid,
+    workingDir,
+    ...hooks,
     detached: process.platform !== 'win32',
   });
 }

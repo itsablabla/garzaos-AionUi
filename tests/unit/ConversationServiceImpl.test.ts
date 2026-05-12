@@ -25,6 +25,7 @@ vi.mock('../../src/process/utils/initAgent', () => ({
   createOpenClawAgent: vi.fn(async () => ({ id: 'claw-id', type: 'openclaw-gateway', name: 'test', extra: {} })),
   createNanobotAgent: vi.fn(async () => ({ id: 'nano-id', type: 'nanobot', name: 'test', extra: {} })),
   createRemoteAgent: vi.fn(async () => ({ id: 'remote-id', type: 'remote', name: 'test', extra: {} })),
+  createReplicaAgent: vi.fn(async () => ({ id: 'replica-id', type: 'replica', name: 'test', extra: {} })),
 }));
 vi.mock('@/common/utils', () => ({
   uuid: vi.fn(() => 'mocked-uuid'),
@@ -47,6 +48,7 @@ function makeRepo(overrides: Partial<IConversationRepository> = {}): IConversati
 }
 
 import { ConversationServiceImpl } from '../../src/process/services/ConversationServiceImpl';
+import { createAcpAgent, createReplicaAgent } from '../../src/process/utils/initAgent';
 import type { CronJob } from '../../src/process/services/cron/CronStore';
 import type { TChatConversation } from '../../src/common/config/storage';
 
@@ -89,6 +91,32 @@ describe('ConversationServiceImpl.getConversation', () => {
     const repo = makeRepo({ getConversation: vi.fn(() => fakeConv) });
     const svc = new ConversationServiceImpl(repo);
     expect(await svc.getConversation('c1')).toEqual(fakeConv);
+  });
+
+  it('returns persisted acp replica conversations as native replica conversations', async () => {
+    const repo = makeRepo({
+      getConversation: vi.fn(() => ({
+        id: 'replica-conv',
+        type: 'acp',
+        name: 'legacy replica',
+        extra: {
+          backend: 'replica',
+          currentModelId: 'claude-opus-4-7',
+        },
+      })),
+    });
+    const svc = new ConversationServiceImpl(repo);
+
+    expect(await svc.getConversation('replica-conv')).toEqual(
+      expect.objectContaining({
+        type: 'replica',
+        extra: expect.objectContaining({
+          backend: 'replica',
+          agentName: 'Replicas',
+          model: 'claude-opus-4-7',
+        }),
+      })
+    );
   });
 
   it('returns undefined when not found', async () => {
@@ -136,6 +164,36 @@ describe('ConversationServiceImpl.updateConversation', () => {
       'c1',
       expect.objectContaining({ extra: expect.objectContaining({ existing: true, newField: 1 }) })
     );
+  });
+});
+
+describe('ConversationServiceImpl.createConversation', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('normalizes acp replica conversations to the native replica agent factory', async () => {
+    const repo = makeRepo();
+    const svc = new ConversationServiceImpl(repo);
+
+    const conversation = await svc.createConversation({
+      type: 'acp',
+      name: 'Replicas',
+      model: {} as any,
+      extra: {
+        backend: 'replica',
+        workspace: '/workspace',
+        currentModelId: 'claude-opus-4-7',
+      },
+    } as any);
+
+    expect(conversation.type).toBe('replica');
+    expect(createReplicaAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'replica',
+        extra: expect.objectContaining({ backend: 'replica' }),
+      })
+    );
+    expect(createAcpAgent).not.toHaveBeenCalled();
+    expect(repo.createConversation).toHaveBeenCalledWith(expect.objectContaining({ type: 'replica' }));
   });
 });
 

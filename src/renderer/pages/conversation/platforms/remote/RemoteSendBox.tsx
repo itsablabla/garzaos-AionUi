@@ -50,7 +50,11 @@ const useRemoteSendBoxDraft = getSendBoxDraftHook('remote', {
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
 
-const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
+const RemoteSendBox: React.FC<{ conversation_id: string; type?: 'remote' | 'replica'; agentName?: string }> = ({
+  conversation_id,
+  type = 'remote',
+  agentName: defaultAgentName = 'Remote Agent',
+}) => {
   const [workspacePath, setWorkspacePath] = useState('');
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
@@ -58,7 +62,7 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
   const removeMessageByMsgId = useRemoveMessageByMsgId();
   const { setSendBoxHandler } = usePreviewContext();
 
-  const [agentName, setAgentName] = useState('Remote Agent');
+  const [agentName, setAgentName] = useState(defaultAgentName);
   const [aiProcessing, setAiProcessing] = useState(false);
   const [hasHydratedRunningState, setHasHydratedRunningState] = useState(false);
   const [thought, setThought] = useState<ThoughtData>({ description: '', subject: '' });
@@ -224,18 +228,20 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
   useEffect(() => {
     void ipcBridge.conversation.get.invoke({ id: conversation_id }).then(async (res) => {
       if (res?.extra?.workspace) setWorkspacePath(res.extra.workspace);
-      const extra = res?.extra as { remoteAgentId?: string } | undefined;
-      if (extra?.remoteAgentId) {
+      const extra = res?.extra as { agentName?: string; remoteAgentId?: string } | undefined;
+      if (type === 'replica') {
+        setAgentName(extra?.agentName?.trim() || defaultAgentName);
+      } else if (extra?.remoteAgentId) {
         const agent = await ipcBridge.remoteAgent.get.invoke({ id: extra.remoteAgentId });
         if (agent?.name) setAgentName(agent.name);
       }
     });
-  }, [conversation_id]);
+  }, [conversation_id, defaultAgentName, type]);
 
   // Handle initial message from Guid page
   useEffect(() => {
-    const storageKey = `remote_initial_message_${conversation_id}`;
-    const processedKey = `remote_initial_processed_${conversation_id}`;
+    const storageKey = `${type}_initial_message_${conversation_id}`;
+    const processedKey = `${type}_initial_processed_${conversation_id}`;
 
     const processInitialMessage = async () => {
       const stored = sessionStorage.getItem(storageKey);
@@ -280,7 +286,7 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
     // Small delay to let the component mount and response stream listener attach
     const timer = setTimeout(() => void processInitialMessage(), 300);
     return () => clearTimeout(timer);
-  }, [conversation_id, workspacePath, addOrUpdateMessage, checkAndUpdateTitle]);
+  }, [conversation_id, type, workspacePath, addOrUpdateMessage, checkAndUpdateTitle]);
 
   const handleFilesAdded = useCallback(
     (pastedFiles: FileMetadata[]) => {

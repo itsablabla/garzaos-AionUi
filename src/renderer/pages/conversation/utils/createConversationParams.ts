@@ -28,6 +28,7 @@ const LEGACY_YOLO_MODE_MAP: Partial<Record<string, string>> = {
   codex: 'yolo',
   gemini: 'yolo',
   qwen: 'yolo',
+  droid: 'high',
 };
 
 async function resolvePreferredMode(backend: string): Promise<string | undefined> {

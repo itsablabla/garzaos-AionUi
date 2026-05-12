@@ -45,6 +45,8 @@ export function getConversationTypeForBackend(backend: string): ICreateConversat
       return 'nanobot';
     case 'remote':
       return 'remote';
+    case 'replica':
+      return 'replica';
     default:
       return 'acp';
   }
@@ -92,6 +94,8 @@ export function buildAgentConversationParams(input: BuildAgentConversationInput)
     }
   } else if (type === 'remote') {
     extra.remoteAgentId = customAgentId;
+  } else if (type === 'replica') {
+    extra.agentName = agentName || name;
   } else if (type === 'acp' || type === 'openclaw-gateway') {
     extra.backend = backend as AcpBackendAll;
     extra.agentName = agentName || name;
