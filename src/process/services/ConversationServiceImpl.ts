@@ -26,16 +26,35 @@ import {
 export class ConversationServiceImpl implements IConversationService {
   constructor(private readonly repo: IConversationRepository) {}
 
+  private normalizeLegacyReplicaConversation(conversation: TChatConversation): TChatConversation {
+    const backend = (conversation.extra as { backend?: string } | undefined)?.backend;
+    if (conversation.type !== 'acp' || backend !== 'replica') {
+      return conversation;
+    }
+    return {
+      ...conversation,
+      type: 'replica',
+      extra: {
+        ...conversation.extra,
+        agentName: conversation.extra.agentName || 'Replicas',
+        model: conversation.extra.currentModelId,
+      },
+    } as TChatConversation;
+  }
+
   async getConversation(id: string): Promise<TChatConversation | undefined> {
-    return this.repo.getConversation(id);
+    const conversation = await this.repo.getConversation(id);
+    return conversation ? this.normalizeLegacyReplicaConversation(conversation) : undefined;
   }
 
   async listAllConversations(): Promise<TChatConversation[]> {
-    return this.repo.listAllConversations();
+    const conversations = await this.repo.listAllConversations();
+    return conversations.map((conversation) => this.normalizeLegacyReplicaConversation(conversation));
   }
 
   async getConversationsByCronJob(cronJobId: string): Promise<TChatConversation[]> {
-    return this.repo.getConversationsByCronJob(cronJobId);
+    const conversations = await this.repo.getConversationsByCronJob(cronJobId);
+    return conversations.map((conversation) => this.normalizeLegacyReplicaConversation(conversation));
   }
 
   async deleteConversation(id: string): Promise<void> {

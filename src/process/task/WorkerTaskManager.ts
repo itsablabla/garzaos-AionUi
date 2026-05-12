@@ -71,9 +71,26 @@ export class WorkerTaskManager implements IWorkerTaskManager {
     throw new Error(`Conversation not found: ${id}`);
   }
 
+  private normalizeLegacyReplicaConversation(conversation: TChatConversation): TChatConversation {
+    const backend = (conversation.extra as { backend?: string } | undefined)?.backend;
+    if (conversation.type !== 'acp' || backend !== 'replica') {
+      return conversation;
+    }
+    return {
+      ...conversation,
+      type: 'replica',
+      extra: {
+        ...conversation.extra,
+        agentName: conversation.extra.agentName || 'Replicas',
+        model: conversation.extra.currentModelId,
+      },
+    } as TChatConversation;
+  }
+
   private _buildAndCache(conversation: TChatConversation, options?: BuildConversationOptions): IAgentManager {
-    const task = this.factory.create(conversation, options);
-    this.addTask(conversation.id, task);
+    const normalizedConversation = this.normalizeLegacyReplicaConversation(conversation);
+    const task = this.factory.create(normalizedConversation, options);
+    this.addTask(normalizedConversation.id, task);
     return task;
   }
 

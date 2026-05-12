@@ -93,6 +93,32 @@ describe('ConversationServiceImpl.getConversation', () => {
     expect(await svc.getConversation('c1')).toEqual(fakeConv);
   });
 
+  it('returns persisted acp replica conversations as native replica conversations', async () => {
+    const repo = makeRepo({
+      getConversation: vi.fn(() => ({
+        id: 'replica-conv',
+        type: 'acp',
+        name: 'legacy replica',
+        extra: {
+          backend: 'replica',
+          currentModelId: 'claude-opus-4-7',
+        },
+      })),
+    });
+    const svc = new ConversationServiceImpl(repo);
+
+    expect(await svc.getConversation('replica-conv')).toEqual(
+      expect.objectContaining({
+        type: 'replica',
+        extra: expect.objectContaining({
+          backend: 'replica',
+          agentName: 'Replicas',
+          model: 'claude-opus-4-7',
+        }),
+      })
+    );
+  });
+
   it('returns undefined when not found', async () => {
     const repo = makeRepo({ getConversation: vi.fn(() => undefined) });
     const svc = new ConversationServiceImpl(repo);
