@@ -16,6 +16,7 @@ import {
   createNanobotAgent,
   createRemoteAgent,
   createAionrsAgent,
+  createReplicaAgent,
 } from '@process/utils/initAgent';
 
 /**
@@ -157,6 +158,10 @@ export class ConversationServiceImpl implements IConversationService {
       }
       case 'remote': {
         conversation = await createRemoteAgent(params as any);
+        break;
+      }
+      case 'replica': {
+        conversation = await createReplicaAgent(params as any);
         break;
       }
       case 'aionrs': {

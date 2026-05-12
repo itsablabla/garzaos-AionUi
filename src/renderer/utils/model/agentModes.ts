@@ -78,6 +78,11 @@ export const AGENT_MODES: Record<string, AgentModeOption[]> = {
     { value: 'plan', label: 'Plan', description: 'Read-only mode for planning and designing before implementation' },
     { value: 'ask', label: 'Ask', description: 'Q&A mode - no edits or command execution' },
   ],
+  droid: [
+    { value: 'low', label: 'Low', description: 'Safe operations with confirmation for risky actions' },
+    { value: 'medium', label: 'Medium', description: 'Development tasks with moderate autonomy' },
+    { value: 'high', label: 'High', description: 'Full autonomy for trusted workspaces' },
+  ],
   snow: [
     { value: 'default', label: 'Agent', description: 'Full agent mode with tool access' },
     { value: 'yolo', label: 'YOLO', description: 'Auto-approve all operations without prompting' },

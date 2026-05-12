@@ -90,4 +90,35 @@ describe('buildAgentConversationParams', () => {
       }),
     });
   });
+
+  it('builds replica params as a native API-key agent', () => {
+    const params = buildAgentConversationParams({
+      backend: 'replica',
+      name: 'Replica Conversation',
+      agentName: 'Replicas',
+      workspace: '/workspace',
+      model: {} as any,
+      currentModelId: 'sonnet',
+      extra: {
+        environmentId: 'env-1',
+        thinkingLevel: 'high',
+      },
+    });
+
+    expect(params).toEqual({
+      type: 'replica',
+      name: 'Replica Conversation',
+      model: {},
+      extra: expect.objectContaining({
+        workspace: '/workspace',
+        customWorkspace: true,
+        agentName: 'Replicas',
+        currentModelId: 'sonnet',
+        environmentId: 'env-1',
+        thinkingLevel: 'high',
+      }),
+    });
+    expect(params.extra).not.toHaveProperty('backend');
+    expect(params.extra).not.toHaveProperty('remoteAgentId');
+  });
 });

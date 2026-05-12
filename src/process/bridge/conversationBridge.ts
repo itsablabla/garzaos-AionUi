@@ -48,6 +48,7 @@ const VALID_CONVERSATION_TYPES = new Set<TChatConversation['type']>([
   'openclaw-gateway',
   'nanobot',
   'remote',
+  'replica',
   'aionrs',
 ]);
 

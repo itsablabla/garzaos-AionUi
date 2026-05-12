@@ -209,6 +209,15 @@ export function rowToConversation(row: IConversationRow): TChatConversation {
     } as TChatConversation;
   }
 
+  // Replica type
+  if (row.type === 'replica') {
+    return {
+      ...base,
+      type: 'replica' as const,
+      extra: JSON.parse(row.extra),
+    } as TChatConversation;
+  }
+
   // Unknown type - should never happen with valid data
   throw new Error(`Unknown conversation type: ${row.type}`);
 }

@@ -369,6 +369,67 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       return;
     }
 
+    // Replicas path — native API-key agent with cloud-hosted streaming events
+    if (selectedAgent === 'replica' || (isPreset && finalEffectiveAgentType === 'replica')) {
+      const replicaAgentInfo = agentInfo || findAgentByKey(selectedAgentKey);
+      const replicaConversationParams = buildAgentConversationParams({
+        backend: 'replica',
+        name: input,
+        agentName: replicaAgentInfo?.name || 'Replicas',
+        presetAssistantId,
+        workspace: finalWorkspace,
+        model: currentModel!,
+        customAgentId: replicaAgentInfo?.customAgentId,
+        customWorkspace: isCustomWorkspace,
+        isPreset,
+        presetAgentType: finalEffectiveAgentType,
+        presetResources: isPreset
+          ? {
+              rules: presetRules,
+              enabledSkills,
+              excludeBuiltinSkills,
+            }
+          : undefined,
+        currentModelId: selectedAcpModel || undefined,
+        extra: {
+          defaultFiles: files,
+          enabledSkills: isPreset ? enabledSkills : undefined,
+          excludeBuiltinSkills,
+        },
+      });
+
+      try {
+        const conversation = await ipcBridge.conversation.create.invoke(replicaConversationParams);
+        if (!conversation || !conversation.id) {
+          alert('Failed to create Replicas conversation. Please ensure REPLICAS_API_KEY is configured.');
+          return;
+        }
+
+        if (isCustomWorkspace) {
+          closeAllTabs();
+          updateWorkspaceTime(finalWorkspace);
+          openTab(conversation);
+        }
+
+        emitter.emit('chat.history.refresh');
+
+        const workspacePath = conversation.extra?.workspace || '';
+        const displayMessage = buildDisplayMessage(input, files, workspacePath);
+        const initialMessage = {
+          input: displayMessage,
+          files: files.length > 0 ? files : undefined,
+        };
+        sessionStorage.setItem(`replica_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
+
+        await navigate(`/conversation/${conversation.id}`);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        alert(`Failed to create Replicas conversation: ${errorMessage}`);
+        throw error;
+      }
+      return;
+    }
+
     // Remaining agent path (ACP/remote/custom, including preset fallbacks)
     {
       // Agent-type fallback only applies to preset assistants whose primary agent

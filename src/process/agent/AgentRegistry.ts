@@ -13,6 +13,7 @@ import type {
   NanobotDetectedAgent,
   OpenClawDetectedAgent,
   RemoteDetectedAgent,
+  ReplicaDetectedAgent,
 } from '@/common/types/detectedAgent';
 import { isAgentKind } from '@/common/types/detectedAgent';
 import type { RemoteAgentConfig } from '@process/agent/remote/types';
@@ -66,6 +67,27 @@ class AgentRegistry {
       kind: 'aionrs',
       available: true,
       backend: 'aionrs',
+    };
+  }
+
+  private createDroidAgent(): AcpDetectedAgent {
+    return {
+      id: 'droid',
+      name: 'Factory Droid',
+      kind: 'acp',
+      available: true,
+      backend: 'droid',
+      cliPath: 'droid',
+    };
+  }
+
+  private createReplicaAgent(): ReplicaDetectedAgent {
+    return {
+      id: 'replica',
+      name: 'Replicas',
+      kind: 'replica',
+      available: true,
+      backend: 'replica',
     };
   }
 
@@ -151,6 +173,8 @@ class AgentRegistry {
     this.detectedAgents = this.deduplicate([
       this.createAionrsAgent(),
       this.createGeminiAgent(),
+      this.createDroidAgent(),
+      this.createReplicaAgent(),
       ...this.builtinAgents,
       ...this.otherAgents,
       ...this.remoteAgents,

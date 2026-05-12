@@ -18,6 +18,7 @@ const FULL_AUTO_MODE: Record<string, string> = {
   aionrs: 'yolo',
   codex: CODEX_MODE_FULL_AUTO,
   cursor: 'agent',
+  droid: 'high',
   snow: 'yolo',
 };
 

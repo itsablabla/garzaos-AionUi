@@ -251,6 +251,7 @@ const BACKEND_AUTH_KEYS: Record<string, string[]> = {
   codebuddy: ['CODEBUDDY_API_KEY'],
   qwen: ['DASHSCOPE_API_KEY'],
   gemini: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'],
+  droid: ['FACTORY_API_KEY'],
 };
 
 /**

@@ -24,6 +24,7 @@ import ChatSider from './ChatSider';
 import NanobotChat from '../platforms/nanobot/NanobotChat';
 import OpenClawChat from '../platforms/openclaw/OpenClawChat';
 import RemoteChat from '../platforms/remote/RemoteChat';
+import ReplicaChat from '../platforms/replica/ReplicaChat';
 import GeminiChat from '../platforms/gemini/GeminiChat';
 import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
 import GeminiModelSelector from '../platforms/gemini/GeminiModelSelector';
@@ -314,6 +315,7 @@ const ChatConversation: React.FC<{
             conversation_id={conversation.id}
             workspace={conversation.extra?.workspace}
             cronJobId={(conversation.extra as { cronJobId?: string })?.cronJobId}
+            hideSendBox={hideSendBox}
           />
         );
       case 'nanobot':
@@ -332,6 +334,17 @@ const ChatConversation: React.FC<{
             conversation_id={conversation.id}
             workspace={conversation.extra?.workspace}
             cronJobId={(conversation.extra as { cronJobId?: string })?.cronJobId}
+            hideSendBox={hideSendBox}
+          />
+        );
+      case 'replica':
+        return (
+          <ReplicaChat
+            key={conversation.id}
+            conversation_id={conversation.id}
+            workspace={conversation.extra?.workspace}
+            cronJobId={(conversation.extra as { cronJobId?: string })?.cronJobId}
+            hideSendBox={hideSendBox}
           />
         );
       default:
@@ -407,7 +420,9 @@ const ChatConversation: React.FC<{
                       ? 'nanobot'
                       : conversation?.type === 'remote'
                         ? 'remote'
-                        : undefined,
+                        : conversation?.type === 'replica'
+                          ? 'replica'
+                          : undefined,
           agentName: conversationAgentName,
         };
 
