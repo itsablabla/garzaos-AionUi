@@ -41,6 +41,19 @@ export type AcpBackendAll =
 // Superset type covering all execution engine backends (ACP + non-ACP).
 export type AgentBackend = AcpBackendAll | 'gemini' | 'remote' | 'aionrs' | 'nanobot' | 'openclaw-gateway' | 'replica';
 
+export const HIDDEN_BUILTIN_ACP_BACKENDS = [
+  'codebuddy',
+  'auggie',
+  'kimi',
+  'copilot',
+  'qoder',
+  'vibe',
+  'cursor',
+  'kiro',
+] as const satisfies readonly AcpBackendAll[];
+
+export type HiddenBuiltinAcpBackend = (typeof HIDDEN_BUILTIN_ACP_BACKENDS)[number];
+
 /**
  * 潜在的 ACP CLI 工具列表
  * 用于自动检测用户本地安装的 CLI 工具

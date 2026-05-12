@@ -56,4 +56,44 @@ describe('ReplicaAgent event translation', () => {
     expect(agent.currentChatId).toBe('chat-1');
     expect(savedChatId).toBe('chat-1');
   });
+
+  it('passes autonomy mode and agent model when creating a replica', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody: Record<string, unknown> | undefined;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/v1/replica')) {
+        requestBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      }
+      return new Response(JSON.stringify({ replica: { id: 'replica-1', name: 'test', status: 'preparing' } }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    try {
+      const agent = new ReplicaAgent({
+        id: 'conv-1',
+        workingDir: '/tmp',
+        apiKey: 'test-key',
+        codingAgent: 'claude',
+        model: 'claude-opus-4-7',
+        planMode: true,
+        thinkingLevel: 'max',
+        onStreamEvent: () => {},
+        onSignalEvent: () => {},
+      });
+
+      await agent.sendMessage({ content: 'hello' });
+
+      expect(requestBody).toMatchObject({
+        message: 'hello',
+        coding_agent: 'claude',
+        model: 'claude-opus-4-7',
+        plan_mode: true,
+        thinking_level: 'max',
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

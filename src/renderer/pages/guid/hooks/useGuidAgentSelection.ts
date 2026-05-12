@@ -19,6 +19,20 @@ import { usePresetAssistantResolver } from './usePresetAssistantResolver';
 import { useAgentAvailability } from './useAgentAvailability';
 import { useCustomAgentsLoader } from './useCustomAgentsLoader';
 
+const DEFAULT_REPLICA_MODEL_INFO: AcpModelInfo = {
+  source: 'models',
+  sourceDetail: 'persisted-model',
+  currentModelId: 'claude-opus-4-7',
+  currentModelLabel: 'Opus 4.7',
+  availableModels: [
+    { id: 'claude-opus-4-7', label: 'Opus 4.7' },
+    { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+    { id: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
+    { id: 'gpt-5.4', label: 'gpt-5.4' },
+  ],
+  canSwitch: true,
+};
+
 export type GuidAgentSelectionResult = {
   selectedAgentKey: string;
   setSelectedAgentKey: (key: string) => void;
@@ -466,6 +480,10 @@ export const useGuidAgentSelection = ({
         availableModels: DEFAULT_CODEX_MODELS.map((m) => ({ id: m.id, label: m.label })),
         canSwitch: true,
       } satisfies AcpModelInfo;
+    }
+
+    if (backend === 'replica') {
+      return DEFAULT_REPLICA_MODEL_INFO;
     }
 
     return null;

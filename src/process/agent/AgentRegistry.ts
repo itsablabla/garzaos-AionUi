@@ -17,6 +17,9 @@ import type {
 } from '@/common/types/detectedAgent';
 import { isAgentKind } from '@/common/types/detectedAgent';
 import type { RemoteAgentConfig } from '@process/agent/remote/types';
+import { HIDDEN_BUILTIN_ACP_BACKENDS } from '@/common/types/acpTypes';
+
+const HIDDEN_BUILTIN_ACP_BACKEND_SET = new Set<string>(HIDDEN_BUILTIN_ACP_BACKENDS);
 
 /**
  * Central registry for ALL detected execution engines.
@@ -214,7 +217,7 @@ class AgentRegistry {
       acpDetector.detectCustomAgents(),
     ]);
 
-    this.builtinAgents = builtinAgents;
+    this.builtinAgents = builtinAgents.filter((agent) => !HIDDEN_BUILTIN_ACP_BACKEND_SET.has(agent.backend));
     this.extensionAgents = extensionAgents;
     this.remoteAgents = remoteAgents;
     this.customAgents = customAgents;

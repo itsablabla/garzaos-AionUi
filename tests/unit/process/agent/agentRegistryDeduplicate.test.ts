@@ -171,6 +171,26 @@ describe('AgentRegistry.deduplicate', () => {
     expect(claudeAgents[0].isExtension).toBeUndefined();
   });
 
+  it('hides deprecated builtin ACP agents from the available agents list', async () => {
+    mockDetectBuiltinAgents.mockResolvedValue([
+      makeAcpAgent({ id: 'codebuddy', name: 'CodeBuddy', backend: 'codebuddy', cliPath: 'codebuddy' }),
+      makeAcpAgent({ id: 'auggie', name: 'Augment Code', backend: 'auggie', cliPath: 'auggie' }),
+      makeAcpAgent({ id: 'kimi', name: 'Kimi CLI', backend: 'kimi', cliPath: 'kimi' }),
+      makeAcpAgent({ id: 'copilot', name: 'GitHub Copilot', backend: 'copilot', cliPath: 'copilot' }),
+      makeAcpAgent({ id: 'qoder', name: 'Qoder CLI', backend: 'qoder', cliPath: 'qodercli' }),
+      makeAcpAgent({ id: 'vibe', name: 'Mistral Vibe', backend: 'vibe', cliPath: 'vibe-acp' }),
+      makeAcpAgent({ id: 'cursor', name: 'Cursor Agent', backend: 'cursor', cliPath: 'agent' }),
+      makeAcpAgent({ id: 'kiro', name: 'Kiro', backend: 'kiro', cliPath: 'kiro-cli' }),
+      makeAcpAgent({ id: 'claude', name: 'Claude Code', backend: 'claude', cliPath: 'claude' }),
+    ]);
+
+    const registry = await createFreshRegistry();
+    await registry.initialize();
+    const backends = registry.getDetectedAgents().map((agent) => agent.backend);
+
+    expect(backends).toEqual(['aionrs', 'gemini', 'droid', 'replica', 'claude']);
+  });
+
   it('returns always-present agents for empty sub-detector results', async () => {
     const registry = await createFreshRegistry();
     await registry.initialize();

@@ -85,6 +85,14 @@ export function resolveReplicaModeOptions(mode: string): {
   return {};
 }
 
+export function resolveReplicaCodingAgent(modelId: string | null | undefined): 'claude' | 'codex' | undefined {
+  if (!modelId) return undefined;
+  const normalized = modelId.toLowerCase();
+  if (normalized.startsWith('gpt') || normalized.includes('codex')) return 'codex';
+  if (normalized.startsWith('claude')) return 'claude';
+  return undefined;
+}
+
 /**
  * Hook that manages the send logic for all conversation types (gemini/openclaw/nanobot/acp).
  */
@@ -406,6 +414,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           defaultFiles: files,
           enabledSkills: isPreset ? enabledSkills : undefined,
           excludeBuiltinSkills,
+          codingAgent: resolveReplicaCodingAgent(selectedAcpModel),
           ...resolveReplicaModeOptions(selectedMode),
         },
       });

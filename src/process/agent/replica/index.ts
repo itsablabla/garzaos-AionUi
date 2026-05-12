@@ -124,6 +124,7 @@ export class ReplicaAgent {
         ...(this.config.environmentId && { environment_id: this.config.environmentId }),
         ...(this.config.codingAgent && { coding_agent: this.config.codingAgent }),
         ...(this.config.model && { model: this.config.model }),
+        ...(this.config.planMode !== undefined && { plan_mode: this.config.planMode }),
         ...(this.config.thinkingLevel && { thinking_level: this.config.thinkingLevel }),
       }),
     });

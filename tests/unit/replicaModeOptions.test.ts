@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveReplicaModeOptions } from '../../src/renderer/pages/guid/hooks/useGuidSend';
+import { resolveReplicaCodingAgent, resolveReplicaModeOptions } from '../../src/renderer/pages/guid/hooks/useGuidSend';
 
 describe('resolveReplicaModeOptions', () => {
   it('maps plan mode to Replicas plan mode', () => {
@@ -15,5 +15,11 @@ describe('resolveReplicaModeOptions', () => {
 
   it('ignores unknown modes', () => {
     expect(resolveReplicaModeOptions('default')).toEqual({});
+  });
+
+  it('maps selected Replicas models to coding agents', () => {
+    expect(resolveReplicaCodingAgent('claude-opus-4-7')).toBe('claude');
+    expect(resolveReplicaCodingAgent('gpt-5.3-codex')).toBe('codex');
+    expect(resolveReplicaCodingAgent('custom')).toBeUndefined();
   });
 });
