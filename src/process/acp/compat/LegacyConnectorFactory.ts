@@ -22,7 +22,6 @@ import {
   connectClaude,
   connectCodebuddy,
   connectCodex,
-  connectDroid,
   spawnGenericBackend,
   type NpxConnectHooks,
   type SpawnResult,
@@ -36,7 +35,6 @@ const NPX_BACKENDS: Record<string, BuiltinConnectFn> = {
   codex: connectCodex,
   claude: connectClaude,
   codebuddy: connectCodebuddy,
-  droid: connectDroid,
 };
 
 export class LegacyConnectorFactory implements ClientFactory {

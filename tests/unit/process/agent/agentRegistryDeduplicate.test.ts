@@ -191,6 +191,28 @@ describe('AgentRegistry.deduplicate', () => {
     expect(backends).toEqual(['aionrs', 'gemini', 'droid', 'replica', 'claude']);
   });
 
+  it('prefers native Droid CLI detection over the always-present fallback entry', async () => {
+    mockDetectBuiltinAgents.mockResolvedValue([
+      makeAcpAgent({
+        id: 'droid',
+        name: 'Factory Droid Native',
+        backend: 'droid',
+        cliPath: 'droid',
+      }),
+    ]);
+
+    const registry = await createFreshRegistry();
+    await registry.initialize();
+    const droidAgents = registry.getDetectedAgents().filter((agent) => agent.backend === 'droid');
+
+    expect(droidAgents).toHaveLength(1);
+    expect(droidAgents[0]).toMatchObject({
+      id: 'droid',
+      name: 'Factory Droid Native',
+      acpArgs: ['--acp'],
+    });
+  });
+
   it('returns always-present agents for empty sub-detector results', async () => {
     const registry = await createFreshRegistry();
     await registry.initialize();
@@ -200,7 +222,12 @@ describe('AgentRegistry.deduplicate', () => {
     expect(agents).toHaveLength(4);
     expect(agents[0].backend).toBe('aionrs');
     expect(agents[1].backend).toBe('gemini');
-    expect(agents[2]).toMatchObject({ id: 'droid', kind: 'acp', backend: 'droid' });
+    expect(agents[2]).toMatchObject({
+      id: 'droid',
+      kind: 'acp',
+      backend: 'droid',
+      acpArgs: ['exec', '--model-mode', 'sonnet', '--output-format', 'acp'],
+    });
     expect(agents[3]).toMatchObject({ id: 'replica', kind: 'replica', backend: 'replica' });
   });
 

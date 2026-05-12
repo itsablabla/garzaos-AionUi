@@ -73,7 +73,7 @@ class AgentRegistry {
     };
   }
 
-  private createDroidAgent(): AcpDetectedAgent {
+  private createDroidFallbackAgent(): AcpDetectedAgent {
     return {
       id: 'droid',
       name: 'Factory Droid',
@@ -81,6 +81,7 @@ class AgentRegistry {
       available: true,
       backend: 'droid',
       cliPath: 'droid',
+      acpArgs: ['exec', '--model-mode', 'sonnet', '--output-format', 'acp'],
     };
   }
 
@@ -173,10 +174,11 @@ class AgentRegistry {
 
   // prettier-ignore
   private merge(): void {
+    const hasNativeDroid = this.builtinAgents.some((agent) => agent.backend === 'droid');
     this.detectedAgents = this.deduplicate([
       this.createAionrsAgent(),
       this.createGeminiAgent(),
-      this.createDroidAgent(),
+      ...(hasNativeDroid ? [] : [this.createDroidFallbackAgent()]),
       this.createReplicaAgent(),
       ...this.builtinAgents,
       ...this.otherAgents,
@@ -217,7 +219,9 @@ class AgentRegistry {
       acpDetector.detectCustomAgents(),
     ]);
 
-    this.builtinAgents = builtinAgents.filter((agent) => !HIDDEN_BUILTIN_ACP_BACKEND_SET.has(agent.backend));
+    this.builtinAgents = builtinAgents.filter(
+      (agent) => agent.backend === 'droid' || !HIDDEN_BUILTIN_ACP_BACKEND_SET.has(agent.backend)
+    );
     this.extensionAgents = extensionAgents;
     this.remoteAgents = remoteAgents;
     this.customAgents = customAgents;
