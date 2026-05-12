@@ -227,6 +227,107 @@ describe('TeamSessionService', () => {
     );
   });
 
+  it('uses preferred ACP model when creating droid team conversations', async () => {
+    mockConfigGet.mockImplementation(async (key: string) => {
+      if (key === 'model.config') {
+        return [
+          {
+            id: 'provider-1',
+            platform: 'gemini',
+            name: 'Gemini API',
+            apiKey: 'key',
+            baseUrl: 'https://example.com',
+            model: ['gemini-2.0-flash'],
+            enabled: true,
+          },
+        ];
+      }
+      if (key === 'acp.config') {
+        return {
+          droid: {
+            preferredModelId: 'custom:Claude-Sonnet-4.6-(Garza)-0',
+          },
+        };
+      }
+      return undefined;
+    });
+
+    const repo = makeRepo();
+    const conversationService = makeConversationService({
+      createConversation: vi.fn().mockResolvedValue({ id: 'conv-droid', extra: {} }),
+    });
+    const service = new TeamSessionService(repo, makeWorkerTaskManager() as any, conversationService);
+
+    await service.createTeam({
+      userId: 'user-1',
+      name: 'Team Droid',
+      workspace: '/workspace',
+      workspaceMode: 'shared',
+      agents: [makeAgent({ agentType: 'droid', agentName: 'Factory Droid', conversationType: 'acp' })],
+    });
+
+    expect(conversationService.createConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'acp',
+        extra: expect.objectContaining({
+          backend: 'droid',
+          currentModelId: 'custom:Claude-Sonnet-4.6-(Garza)-0',
+        }),
+      })
+    );
+  });
+
+  it('uses Factory Droid settings default when no preferred droid model is saved', async () => {
+    mockConfigGet.mockImplementation(async (key: string) => {
+      if (key === 'model.config') {
+        return [
+          {
+            id: 'provider-1',
+            platform: 'gemini',
+            name: 'Gemini API',
+            apiKey: 'key',
+            baseUrl: 'https://example.com',
+            model: ['gemini-2.0-flash'],
+            enabled: true,
+          },
+        ];
+      }
+      if (key === 'acp.config') {
+        return {};
+      }
+      return undefined;
+    });
+    mockReadFile.mockImplementation(async (filePath: string) => {
+      if (filePath.endsWith('.factory/settings.json')) {
+        return JSON.stringify({ model: 'custom:Claude-Sonnet-4.6-(Garza)-0' });
+      }
+      throw new Error('ENOENT');
+    });
+
+    const repo = makeRepo();
+    const conversationService = makeConversationService({
+      createConversation: vi.fn().mockResolvedValue({ id: 'conv-droid', extra: {} }),
+    });
+    const service = new TeamSessionService(repo, makeWorkerTaskManager() as any, conversationService);
+
+    await service.createTeam({
+      userId: 'user-1',
+      name: 'Team Droid',
+      workspace: '/workspace',
+      workspaceMode: 'shared',
+      agents: [makeAgent({ agentType: 'droid', agentName: 'Factory Droid', conversationType: 'acp' })],
+    });
+
+    expect(conversationService.createConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          backend: 'droid',
+          currentModelId: 'custom:Claude-Sonnet-4.6-(Garza)-0',
+        }),
+      })
+    );
+  });
+
   it('creates remote team conversations with the remote agent id', async () => {
     mockConfigGet.mockResolvedValue(undefined);
 

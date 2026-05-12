@@ -21,6 +21,7 @@ import { getAssistantsDir } from '@process/utils/initStorage';
 import { TeamSession } from './TeamSession';
 import type { TTeam, TeamAgent } from './types';
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { resolveLocaleKey } from '@/common/utils';
 import { hasGeminiOauthCreds } from './googleAuthCheck';
@@ -183,6 +184,13 @@ export class TeamSessionService {
       return preferredModelId;
     }
 
+    if (agentType === 'droid') {
+      const factoryDefaultModel = await this.readFactoryDroidDefaultModel();
+      if (factoryDefaultModel) {
+        return factoryDefaultModel;
+      }
+    }
+
     const cachedModels = await ProcessConfig.get('acp.cachedModels');
     const cachedModelId = cachedModels?.[agentType]?.currentModelId;
     if (typeof cachedModelId === 'string' && cachedModelId.trim().length > 0) {
@@ -190,6 +198,17 @@ export class TeamSessionService {
     }
 
     return undefined;
+  }
+
+  private async readFactoryDroidDefaultModel(): Promise<string | undefined> {
+    try {
+      const settings = JSON.parse(await fs.readFile(path.join(os.homedir(), '.factory', 'settings.json'), 'utf-8')) as {
+        model?: unknown;
+      };
+      return typeof settings.model === 'string' && settings.model.trim().length > 0 ? settings.model : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private async findBuiltinResourceDir(resourceType: 'rules' | 'skills'): Promise<string> {

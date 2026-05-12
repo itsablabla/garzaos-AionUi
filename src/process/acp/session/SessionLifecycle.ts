@@ -309,11 +309,26 @@ export class SessionLifecycle {
     const pending = this.host.configTracker.getPendingChanges();
 
     if (pending.model) {
+      let modelApplied = false;
       try {
         await this._client.setModel(this._sessionId, pending.model);
         this.host.configTracker.setCurrentModel(pending.model);
+        modelApplied = true;
       } catch {
-        /* best effort */
+        const modelConfigOptionId = this.host.configTracker.getModelConfigOptionId(pending.model);
+        if (modelConfigOptionId) {
+          try {
+            await this._client.setConfigOption(this._sessionId, modelConfigOptionId, pending.model);
+            this.host.configTracker.setCurrentModel(pending.model);
+            this.host.configTracker.setCurrentConfigOption(modelConfigOptionId, pending.model);
+            modelApplied = true;
+          } catch {
+            /* best effort */
+          }
+        }
+      }
+      if (modelApplied) {
+        this.host.callbacks.onModelUpdate(this.host.configTracker.modelSnapshot());
       }
     }
     if (pending.mode) {

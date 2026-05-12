@@ -126,6 +126,14 @@ export class ConfigTracker {
     };
   }
 
+  getModelConfigOptionId(modelId: string): string | null {
+    const modelOption = this.currentConfigOptions.find(
+      (option) =>
+        option.category === 'model' && option.type === 'select' && option.options?.some((model) => model.id === modelId)
+    );
+    return modelOption?.id ?? null;
+  }
+
   clearPending(): void {
     this.desiredModelId = null;
     this.desiredModeId = null;
