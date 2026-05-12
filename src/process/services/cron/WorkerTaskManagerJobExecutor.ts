@@ -297,6 +297,8 @@ export class WorkerTaskManagerJobExecutor implements ICronJobExecutor {
         return 'nanobot';
       case 'remote':
         return 'remote';
+      case 'replica':
+        return 'replica';
       default:
         return 'acp';
     }

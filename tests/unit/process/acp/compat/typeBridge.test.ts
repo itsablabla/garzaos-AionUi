@@ -162,6 +162,43 @@ describe('typeBridge', () => {
       expect(result.env).toEqual({ EXTRA: 'true' });
     });
 
+    it('should pass Droid model selection at launch time', () => {
+      const oldConfig: OldAcpAgentConfig = {
+        id: 'droid-agent',
+        backend: 'droid',
+        workingDir: '/workspace',
+        customArgs: ['exec', '--output-format', 'acp'],
+        onStreamEvent: () => {},
+        extra: {
+          backend: 'droid',
+          currentModelId: 'custom:Garza-Sonnet-0',
+        },
+      };
+
+      const result = toAgentConfig(oldConfig);
+
+      expect(result.args).toEqual(['exec', '--output-format', 'acp', '--model', 'custom:Garza-Sonnet-0']);
+      expect(result.initialDesired?.model).toBe('custom:Garza-Sonnet-0');
+    });
+
+    it('should not duplicate existing Droid model launch args', () => {
+      const oldConfig: OldAcpAgentConfig = {
+        id: 'droid-agent',
+        backend: 'droid',
+        workingDir: '/workspace',
+        customArgs: ['exec', '--output-format', 'acp', '--model', 'custom:Existing-0'],
+        onStreamEvent: () => {},
+        extra: {
+          backend: 'droid',
+          currentModelId: 'custom:Garza-Sonnet-0',
+        },
+      };
+
+      const result = toAgentConfig(oldConfig);
+
+      expect(result.args).toEqual(['exec', '--output-format', 'acp', '--model', 'custom:Existing-0']);
+    });
+
     // Note: authCredentials are loaded async by loadAuthCredentials() in AcpAgentV2,
     // not by toAgentConfig(). toAgentConfig leaves authCredentials undefined.
     it('should leave authCredentials undefined (loaded async by AcpAgentV2)', () => {

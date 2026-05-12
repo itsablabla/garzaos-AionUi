@@ -9,7 +9,7 @@ import { AuthNegotiator } from '@process/acp/session/AuthNegotiator';
 import type { ConfigTracker } from '@process/acp/session/ConfigTracker';
 import { McpConfig } from '@process/acp/session/McpConfig';
 import type { MessageTranslator } from '@process/acp/session/MessageTranslator';
-import type { AgentConfig, ProtocolHandlers, SessionCallbacks, SessionStatus } from '@process/acp/types';
+import type { AgentConfig, ConfigOption, ProtocolHandlers, SessionCallbacks, SessionStatus } from '@process/acp/types';
 
 // ─── YOLO mode resolution ──────────────────────────────────────
 
@@ -22,6 +22,39 @@ import type { AgentConfig, ProtocolHandlers, SessionCallbacks, SessionStatus } f
 function resolveYoloModeId(backend: string, availableModes: ReadonlyArray<{ id: string }>): string | null {
   const candidate = getFullAutoMode(backend);
   return availableModes.some((m) => m.id === candidate) ? candidate : null;
+}
+
+type RawSelectOption = { id?: string; value?: string; name: string; description?: string | null };
+type RawSelectGroup = { options: RawSelectOption[] };
+
+function mapConfigOption(opt: NewSessionResponse['configOptions'][number]): ConfigOption {
+  return {
+    id: opt.id,
+    name: opt.name,
+    type: opt.type,
+    category: opt.category ?? undefined,
+    description: opt.description ?? undefined,
+    options: opt.type === 'select' ? (opt.options ?? []).flatMap(mapSelectOption) : undefined,
+    currentValue: opt.currentValue,
+  };
+}
+
+function mapSelectOption(
+  option: RawSelectOption | RawSelectGroup
+): Array<{ id: string; name: string; description?: string }> {
+  if ('value' in option || 'id' in option) {
+    const value = option.value ?? option.id;
+    if (value === undefined) return [];
+    return [
+      {
+        id: value,
+        name: option.name,
+        description: option.description ?? undefined,
+      },
+    ];
+  }
+  if ('options' in option) return option.options.flatMap(mapSelectOption);
+  return [];
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -248,12 +281,7 @@ export class SessionLifecycle {
         name: m.name,
         description: m.description ?? undefined,
       })),
-      configOptions: sessionResult.configOptions?.map((opt) => ({
-        id: opt.id,
-        name: opt.name,
-        type: opt.type,
-        currentValue: opt.currentValue,
-      })),
+      configOptions: sessionResult.configOptions?.map(mapConfigOption),
       cwd: this.host.agentConfig.cwd,
       additionalDirectories: this.host.agentConfig.additionalDirectories,
     });
@@ -308,12 +336,27 @@ export class SessionLifecycle {
     if (!this._client || !this._sessionId) return;
     const pending = this.host.configTracker.getPendingChanges();
 
-    if (pending.model) {
+    if (pending.model && this.host.agentConfig.agentBackend !== 'droid') {
+      let modelApplied = false;
       try {
         await this._client.setModel(this._sessionId, pending.model);
         this.host.configTracker.setCurrentModel(pending.model);
+        modelApplied = true;
       } catch {
-        /* best effort */
+        const modelConfigOptionId = this.host.configTracker.getModelConfigOptionId(pending.model);
+        if (modelConfigOptionId) {
+          try {
+            await this._client.setConfigOption(this._sessionId, modelConfigOptionId, pending.model);
+            this.host.configTracker.setCurrentModel(pending.model);
+            this.host.configTracker.setCurrentConfigOption(modelConfigOptionId, pending.model);
+            modelApplied = true;
+          } catch {
+            /* best effort */
+          }
+        }
+      }
+      if (modelApplied) {
+        this.host.callbacks.onModelUpdate(this.host.configTracker.modelSnapshot());
       }
     }
     if (pending.mode) {

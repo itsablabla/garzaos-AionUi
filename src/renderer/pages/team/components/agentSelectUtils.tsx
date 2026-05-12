@@ -31,13 +31,14 @@ export function filterTeamSupportedAgents(
 
 export function resolveConversationType(
   backend: string
-): 'gemini' | 'acp' | 'aionrs' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'remote' {
+): 'gemini' | 'acp' | 'aionrs' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'remote' | 'replica' {
   if (backend === 'gemini') return 'gemini';
   if (backend === 'aionrs') return 'aionrs';
   if (backend === 'codex') return 'acp';
   if (backend === 'openclaw-gateway') return 'openclaw-gateway';
   if (backend === 'nanobot') return 'nanobot';
   if (backend === 'remote') return 'remote';
+  if (backend === 'replica') return 'replica';
   return 'acp';
 }
 

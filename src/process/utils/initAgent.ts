@@ -340,6 +340,52 @@ export const createRemoteAgent = async (options: ICreateConversationParams): Pro
   };
 };
 
+export const createReplicaAgent = async (options: ICreateConversationParams): Promise<TChatConversation> => {
+  const { extra } = options;
+  const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(
+    `replica-temp-${Date.now()}`,
+    extra.workspace,
+    extra.defaultFiles,
+    extra.customWorkspace
+  );
+
+  if (!customWorkspace) {
+    await setupAssistantWorkspace(workspace, {
+      enabledSkills: extra.enabledSkills,
+      extraSkillPaths: extra.extraSkillPaths,
+      excludeBuiltinSkills: extra.excludeBuiltinSkills,
+    });
+  }
+
+  return {
+    type: 'replica',
+    extra: {
+      workspace,
+      customWorkspace,
+      replicaId: extra.replicaId,
+      chatId: extra.chatId,
+      environmentId: extra.environmentId || process.env.REPLICAS_ENVIRONMENT_ID,
+      repositorySetId: extra.repositorySetId || process.env.REPLICAS_REPOSITORY_SET_ID,
+      repositoryIds:
+        extra.repositoryIds ||
+        process.env.REPLICAS_REPOSITORY_IDS?.split(',')
+          .map((id) => id.trim())
+          .filter(Boolean),
+      apiBaseUrl: extra.apiBaseUrl,
+      model: extra.currentModelId,
+      codingAgent: extra.codingAgent,
+      thinkingLevel: extra.thinkingLevel,
+      planMode: extra.planMode,
+      enabledSkills: extra.enabledSkills,
+      presetAssistantId: extra.presetAssistantId,
+    },
+    createTime: Date.now(),
+    modifyTime: Date.now(),
+    name: workspace,
+    id: uuid(),
+  };
+};
+
 export const createAionrsAgent = async (options: ICreateConversationParams): Promise<TChatConversation> => {
   const { extra } = options;
   const { workspace, customWorkspace } = await buildWorkspaceWidthFiles(

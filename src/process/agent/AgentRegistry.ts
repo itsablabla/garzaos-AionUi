@@ -13,9 +13,13 @@ import type {
   NanobotDetectedAgent,
   OpenClawDetectedAgent,
   RemoteDetectedAgent,
+  ReplicaDetectedAgent,
 } from '@/common/types/detectedAgent';
 import { isAgentKind } from '@/common/types/detectedAgent';
 import type { RemoteAgentConfig } from '@process/agent/remote/types';
+import { HIDDEN_BUILTIN_ACP_BACKENDS } from '@/common/types/acpTypes';
+
+const HIDDEN_BUILTIN_ACP_BACKEND_SET = new Set<string>(HIDDEN_BUILTIN_ACP_BACKENDS);
 
 /**
  * Central registry for ALL detected execution engines.
@@ -66,6 +70,28 @@ class AgentRegistry {
       kind: 'aionrs',
       available: true,
       backend: 'aionrs',
+    };
+  }
+
+  private createDroidFallbackAgent(): AcpDetectedAgent {
+    return {
+      id: 'droid',
+      name: 'Factory Droid',
+      kind: 'acp',
+      available: true,
+      backend: 'droid',
+      cliPath: 'droid',
+      acpArgs: ['exec', '--output-format', 'acp'],
+    };
+  }
+
+  private createReplicaAgent(): ReplicaDetectedAgent {
+    return {
+      id: 'replica',
+      name: 'Replicas',
+      kind: 'replica',
+      available: true,
+      backend: 'replica',
     };
   }
 
@@ -148,9 +174,12 @@ class AgentRegistry {
 
   // prettier-ignore
   private merge(): void {
+    const hasNativeDroid = this.builtinAgents.some((agent) => agent.backend === 'droid');
     this.detectedAgents = this.deduplicate([
       this.createAionrsAgent(),
       this.createGeminiAgent(),
+      ...(hasNativeDroid ? [] : [this.createDroidFallbackAgent()]),
+      this.createReplicaAgent(),
       ...this.builtinAgents,
       ...this.otherAgents,
       ...this.remoteAgents,
@@ -190,7 +219,9 @@ class AgentRegistry {
       acpDetector.detectCustomAgents(),
     ]);
 
-    this.builtinAgents = builtinAgents;
+    this.builtinAgents = builtinAgents.filter(
+      (agent) => agent.backend === 'droid' || !HIDDEN_BUILTIN_ACP_BACKEND_SET.has(agent.backend)
+    );
     this.extensionAgents = extensionAgents;
     this.remoteAgents = remoteAgents;
     this.customAgents = customAgents;

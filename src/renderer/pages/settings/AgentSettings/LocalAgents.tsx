@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ipcBridge } from '@/common';
 import { ConfigStorage } from '@/common/config/storage';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
+import { fetchDetectedAgents } from '@/renderer/utils/model/agentTypes';
 import AionModal from '@/renderer/components/base/AionModal';
 import { Button, Typography } from '@arco-design/web-react';
 import { Home, Plus } from '@icon-park/react';
@@ -25,11 +25,8 @@ const LocalAgents: React.FC = () => {
 
   // Detected agents (include built-in backends and extension-contributed agents, exclude user custom and remote)
   const { data: detectedAgents } = useSWR('acp.agents.available.settings', async () => {
-    const result = await ipcBridge.acpConversation.getAvailableAgents.invoke();
-    if (result.success && result.data) {
-      return result.data.filter((agent) => agent.backend !== 'remote' && agent.backend !== 'custom' && !agent.isPreset);
-    }
-    return [];
+    const agents = await fetchDetectedAgents();
+    return agents.filter((agent) => agent.backend !== 'remote' && agent.backend !== 'custom' && !agent.isPreset);
   });
 
   // Custom agents (user-defined, stored in 'acp.customAgents')

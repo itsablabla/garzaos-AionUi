@@ -60,6 +60,9 @@ const resolveAgentIdentity = (conversation: TChatConversation): { backend: strin
   if (conversation.type === 'remote') {
     return { backend: 'remote', agentName: 'Remote Agent' };
   }
+  if (conversation.type === 'replica') {
+    return { backend: 'replica', agentName: 'Replicas' };
+  }
   return { backend: 'nanobot', agentName: 'NanoBot' };
 };
 

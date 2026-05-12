@@ -182,6 +182,17 @@ const TeamChatView: React.FC<TeamChatViewProps> = ({ conversation, hideSendBox, 
             emptySlot={emptySlot}
           />
         );
+      case 'replica':
+        return (
+          <RemoteChat
+            key={conversation.id}
+            conversation_id={conversation.id}
+            workspace={conversation.extra?.workspace}
+            type='replica'
+            hideSendBox={hideSendBox}
+            emptySlot={emptySlot}
+          />
+        );
       default:
         return null;
     }

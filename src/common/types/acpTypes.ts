@@ -13,6 +13,9 @@ export const CLAUDE_ACP_NPX_PACKAGE = `@agentclientprotocol/claude-agent-acp@${C
 export const CODEBUDDY_ACP_BRIDGE_VERSION = '2.73.0';
 export const CODEBUDDY_ACP_NPX_PACKAGE = `@tencent-ai/codebuddy-code@${CODEBUDDY_ACP_BRIDGE_VERSION}`;
 
+export const DROID_ACP_BRIDGE_VERSION = '0.0.8';
+export const DROID_ACP_NPX_PACKAGE = `@yaonyan/droid-acp@${DROID_ACP_BRIDGE_VERSION}`;
+
 // ACP 后端类型定义 — 仅包含 ACP 协议相关的后端
 // ACP backend types — only ACP protocol backends
 export type AcpBackendAll =
@@ -36,7 +39,20 @@ export type AcpBackendAll =
   | 'custom'; // User-configured custom ACP agent (extension adapters)
 
 // Superset type covering all execution engine backends (ACP + non-ACP).
-export type AgentBackend = AcpBackendAll | 'gemini' | 'remote' | 'aionrs' | 'nanobot' | 'openclaw-gateway';
+export type AgentBackend = AcpBackendAll | 'gemini' | 'remote' | 'aionrs' | 'nanobot' | 'openclaw-gateway' | 'replica';
+
+export const HIDDEN_BUILTIN_ACP_BACKENDS = [
+  'codebuddy',
+  'auggie',
+  'kimi',
+  'copilot',
+  'qoder',
+  'vibe',
+  'cursor',
+  'kiro',
+] as const satisfies readonly AcpBackendAll[];
+
+export type HiddenBuiltinAcpBackend = (typeof HIDDEN_BUILTIN_ACP_BACKENDS)[number];
 
 /**
  * 潜在的 ACP CLI 工具列表
@@ -398,9 +414,9 @@ export const ACP_BACKENDS_ALL: Record<AcpBackendAll, AcpBackendConfig> = {
     id: 'droid',
     name: 'Factory Droid',
     cliCommand: 'droid',
-    // Droid uses FACTORY_API_KEY from environment, not an interactive auth flow.
+    // Droid owns Factory auth itself (device pairing or FACTORY_API_KEY); AionUi only spawns the local CLI.
     authRequired: false,
-    enabled: true, // ✅ Factory docs: `droid exec --output-format acp` (JetBrains/Zed ACP integration)
+    enabled: false, // AgentRegistry exposes Droid via the local `droid exec --output-format acp` fallback.
     supportsStreaming: false,
     acpArgs: ['exec', '--output-format', 'acp'],
     skillsDirs: ['.factory/skills'],

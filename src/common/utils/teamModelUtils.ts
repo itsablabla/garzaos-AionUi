@@ -120,7 +120,9 @@ export function getTeamDefaultModelId(
 ): string | undefined {
   // 1. User's preferred model for this backend
   const preferred = acpConfig?.[backend]?.preferredModelId;
-  if (preferred) return preferred;
+  const availableModels = cachedModels?.[backend]?.availableModels;
+  if (preferred && (!availableModels?.length || availableModels.some((model) => model.id === preferred)))
+    return preferred;
 
   // 2. Cached current model from last ACP session
   const cached = cachedModels?.[backend]?.currentModelId;

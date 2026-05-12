@@ -28,15 +28,23 @@ export type AvailableAgent = {
   extensionName?: string;
 };
 
+const NATIVE_AGENT_FALLBACKS: AvailableAgent[] = [{ backend: 'replica', name: 'Replicas' }];
+
+function withNativeAgentFallbacks(agents: AvailableAgent[]): AvailableAgent[] {
+  const seen = new Set(agents.map((agent) => agent.backend));
+  const missing = NATIVE_AGENT_FALLBACKS.filter((agent) => !seen.has(agent.backend));
+  return missing.length > 0 ? [...agents, ...missing] : agents;
+}
+
 /** Shared fetcher for DETECTED_AGENTS_SWR_KEY — single source of truth. */
 export async function fetchDetectedAgents(): Promise<AvailableAgent[]> {
   try {
     const resp = await ipcBridge.acpConversation.getAvailableAgents.invoke();
     if (resp.success && resp.data) {
-      return resp.data as AvailableAgent[];
+      return withNativeAgentFallbacks(resp.data as AvailableAgent[]);
     }
   } catch {
     // fallback to empty
   }
-  return [];
+  return withNativeAgentFallbacks([]);
 }

@@ -445,6 +445,33 @@ export type TChatConversation =
       >,
       'model'
     >
+  | Omit<
+      IChatConversation<
+        'replica',
+        {
+          workspace?: string;
+          customWorkspace?: boolean;
+          replicaId?: string;
+          chatId?: string;
+          environmentId?: string;
+          repositorySetId?: string;
+          repositoryIds?: string[];
+          apiBaseUrl?: string;
+          model?: string;
+          codingAgent?: 'claude' | 'codex';
+          thinkingLevel?: 'low' | 'medium' | 'high' | 'max';
+          planMode?: boolean;
+          enabledSkills?: string[];
+          loadedSkills?: Array<{ name: string; description: string }>;
+          presetAssistantId?: string;
+          pinned?: boolean;
+          pinnedAt?: number;
+          isHealthCheck?: boolean;
+          cronJobId?: string;
+        }
+      >,
+      'model'
+    >
   | IChatConversation<
       'aionrs',
       {

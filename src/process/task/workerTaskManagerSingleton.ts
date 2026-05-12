@@ -17,6 +17,7 @@ import AcpAgentManager from './AcpAgentManager';
 import OpenClawAgentManager from './OpenClawAgentManager';
 import NanoBotAgentManager from './NanoBotAgentManager';
 import RemoteAgentManager from './RemoteAgentManager';
+import ReplicaAgentManager from './ReplicaAgentManager';
 import { AionrsManager } from './AionrsManager';
 
 const agentFactory = new AgentFactory();
@@ -64,6 +65,16 @@ agentFactory.register('nanobot', (conv, opts) => {
 agentFactory.register('remote', (conv, opts) => {
   const c = conv as any;
   return new RemoteAgentManager({
+    ...c.extra,
+    conversation_id: c.id,
+    yoloMode: opts?.yoloMode,
+  }) as unknown as ReturnType<typeof agentFactory.create>;
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+agentFactory.register('replica', (conv, opts) => {
+  const c = conv as any;
+  return new ReplicaAgentManager({
     ...c.extra,
     conversation_id: c.id,
     yoloMode: opts?.yoloMode,

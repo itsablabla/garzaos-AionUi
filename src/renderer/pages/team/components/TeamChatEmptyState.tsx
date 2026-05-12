@@ -18,6 +18,7 @@ const useOpenClawDraft = getSendBoxDraftHook('openclaw-gateway', {
 });
 const useNanobotDraft = getSendBoxDraftHook('nanobot', { _type: 'nanobot', atPath: [], content: '', uploadFile: [] });
 const useRemoteDraft = getSendBoxDraftHook('remote', { _type: 'remote', atPath: [], content: '', uploadFile: [] });
+const useReplicaDraft = getSendBoxDraftHook('replica', { _type: 'replica', atPath: [], content: '', uploadFile: [] });
 const useAionrsDraft = getSendBoxDraftHook('aionrs', { _type: 'aionrs', atPath: [], content: '', uploadFile: [] });
 
 type Props = {
@@ -81,6 +82,7 @@ const TeamChatEmptyState: React.FC<Props> = ({ conversationId }) => {
   const aionrsDraft = useAionrsDraft(conversationId);
   const nanobotDraft = useNanobotDraft(conversationId);
   const remoteDraft = useRemoteDraft(conversationId);
+  const replicaDraft = useReplicaDraft(conversationId);
   const openClawDraft = useOpenClawDraft(conversationId);
   const setContentByKind = {
     acp: (text: string) => acpDraft.mutate((prev) => ({ ...prev, content: text })),
@@ -88,6 +90,7 @@ const TeamChatEmptyState: React.FC<Props> = ({ conversationId }) => {
     aionrs: (text: string) => aionrsDraft.mutate((prev) => ({ ...prev, content: text })),
     nanobot: (text: string) => nanobotDraft.mutate((prev) => ({ ...prev, content: text })),
     remote: (text: string) => remoteDraft.mutate((prev) => ({ ...prev, content: text })),
+    replica: (text: string) => replicaDraft.mutate((prev) => ({ ...prev, content: text })),
     'openclaw-gateway': (text: string) => openClawDraft.mutate((prev) => ({ ...prev, content: text })),
   } satisfies Record<DetectedAgentKind, (text: string) => void>;
 

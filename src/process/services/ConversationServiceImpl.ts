@@ -16,6 +16,7 @@ import {
   createNanobotAgent,
   createRemoteAgent,
   createAionrsAgent,
+  createReplicaAgent,
 } from '@process/utils/initAgent';
 
 /**
@@ -25,16 +26,46 @@ import {
 export class ConversationServiceImpl implements IConversationService {
   constructor(private readonly repo: IConversationRepository) {}
 
+  private normalizeLegacyReplicaConversation(conversation: TChatConversation): TChatConversation {
+    const backend = (conversation.extra as { backend?: string } | undefined)?.backend;
+    if (conversation.type !== 'acp' || backend !== 'replica') {
+      return conversation;
+    }
+    return {
+      ...conversation,
+      type: 'replica',
+      extra: {
+        ...conversation.extra,
+        agentName: conversation.extra.agentName || 'Replicas',
+        model: conversation.extra.currentModelId,
+      },
+    } as TChatConversation;
+  }
+
+  private async repairLegacyReplicaConversation(conversation: TChatConversation): Promise<TChatConversation> {
+    const normalized = this.normalizeLegacyReplicaConversation(conversation);
+    if (normalized !== conversation) {
+      await this.repo.updateConversation(conversation.id, {
+        type: 'replica',
+        extra: normalized.extra,
+      } as Partial<TChatConversation>);
+    }
+    return normalized;
+  }
+
   async getConversation(id: string): Promise<TChatConversation | undefined> {
-    return this.repo.getConversation(id);
+    const conversation = await this.repo.getConversation(id);
+    return conversation ? this.repairLegacyReplicaConversation(conversation) : undefined;
   }
 
   async listAllConversations(): Promise<TChatConversation[]> {
-    return this.repo.listAllConversations();
+    const conversations = await this.repo.listAllConversations();
+    return conversations.map((conversation) => this.normalizeLegacyReplicaConversation(conversation));
   }
 
   async getConversationsByCronJob(cronJobId: string): Promise<TChatConversation[]> {
-    return this.repo.getConversationsByCronJob(cronJobId);
+    const conversations = await this.repo.getConversationsByCronJob(cronJobId);
+    return conversations.map((conversation) => this.normalizeLegacyReplicaConversation(conversation));
   }
 
   async deleteConversation(id: string): Promise<void> {
@@ -123,62 +154,68 @@ export class ConversationServiceImpl implements IConversationService {
 
   async createConversation(params: CreateConversationParams): Promise<TChatConversation> {
     let conversation: TChatConversation;
+    const normalizedParams =
+      params.type === 'acp' && params.extra?.backend === 'replica' ? { ...params, type: 'replica' as const } : params;
 
-    switch (params.type) {
+    switch (normalizedParams.type) {
       case 'gemini': {
         conversation = await createGeminiAgent(
-          params.model,
-          params.extra.workspace,
-          params.extra.defaultFiles as string[] | undefined,
-          params.extra.webSearchEngine,
-          params.extra.customWorkspace,
-          params.extra.contextFileName,
-          params.extra.presetRules,
-          params.extra.enabledSkills as string[] | undefined,
-          params.extra.presetAssistantId,
-          params.extra.sessionMode,
-          params.extra.isHealthCheck,
-          params.extra.extraSkillPaths as string[] | undefined,
-          params.extra.excludeBuiltinSkills as string[] | undefined
+          normalizedParams.model,
+          normalizedParams.extra.workspace,
+          normalizedParams.extra.defaultFiles as string[] | undefined,
+          normalizedParams.extra.webSearchEngine,
+          normalizedParams.extra.customWorkspace,
+          normalizedParams.extra.contextFileName,
+          normalizedParams.extra.presetRules,
+          normalizedParams.extra.enabledSkills as string[] | undefined,
+          normalizedParams.extra.presetAssistantId,
+          normalizedParams.extra.sessionMode,
+          normalizedParams.extra.isHealthCheck,
+          normalizedParams.extra.extraSkillPaths as string[] | undefined,
+          normalizedParams.extra.excludeBuiltinSkills as string[] | undefined
         );
         break;
       }
       case 'acp': {
-        conversation = await createAcpAgent(params as any);
+        conversation = await createAcpAgent(normalizedParams as any);
         break;
       }
       case 'openclaw-gateway': {
-        conversation = await createOpenClawAgent(params as any);
+        conversation = await createOpenClawAgent(normalizedParams as any);
         break;
       }
       case 'nanobot': {
-        conversation = await createNanobotAgent(params as any);
+        conversation = await createNanobotAgent(normalizedParams as any);
         break;
       }
       case 'remote': {
-        conversation = await createRemoteAgent(params as any);
+        conversation = await createRemoteAgent(normalizedParams as any);
+        break;
+      }
+      case 'replica': {
+        conversation = await createReplicaAgent(normalizedParams as any);
         break;
       }
       case 'aionrs': {
-        conversation = await createAionrsAgent(params as any);
+        conversation = await createAionrsAgent(normalizedParams as any);
         break;
       }
       default: {
-        throw new Error(`Invalid conversation type: ${(params as any).type}`);
+        throw new Error(`Invalid conversation type: ${(normalizedParams as any).type}`);
       }
     }
 
     // Apply optional overrides without mutating the object returned by agent factories
     const overrides: Partial<TChatConversation> = {};
-    if (params.id) overrides.id = params.id;
-    if (params.name) overrides.name = params.name;
-    if (params.source) overrides.source = params.source;
-    if (params.channelChatId) overrides.channelChatId = params.channelChatId;
+    if (normalizedParams.id) overrides.id = normalizedParams.id;
+    if (normalizedParams.name) overrides.name = normalizedParams.name;
+    if (normalizedParams.source) overrides.source = normalizedParams.source;
+    if (normalizedParams.channelChatId) overrides.channelChatId = normalizedParams.channelChatId;
     // Merge extra fields from params that the factory didn't consume (e.g. cronJobId).
     // Factory-produced values take precedence; only novel keys from params.extra are added.
-    if (params.extra && conversation.extra) {
+    if (normalizedParams.extra && conversation.extra) {
       const factoryExtra = conversation.extra as Record<string, unknown>;
-      for (const [key, value] of Object.entries(params.extra)) {
+      for (const [key, value] of Object.entries(normalizedParams.extra)) {
         if (value !== undefined && !(key in factoryExtra)) {
           factoryExtra[key] = value;
         }

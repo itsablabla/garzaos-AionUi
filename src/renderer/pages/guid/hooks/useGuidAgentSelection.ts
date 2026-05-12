@@ -10,6 +10,7 @@ import type { IProvider } from '@/common/config/storage';
 import { ConfigStorage } from '@/common/config/storage';
 import type { AcpBackendAll, AcpSessionConfigOption } from '@/common/types/acpTypes';
 import type { AcpBackend, AcpBackendConfig, AcpModelInfo, AvailableAgent, EffectiveAgentInfo } from '../types';
+import { DEFAULT_REPLICA_MODEL } from '@/common/types/replica';
 import { DETECTED_AGENTS_SWR_KEY, fetchDetectedAgents } from '@/renderer/utils/model/agentTypes';
 import { getAgentModes } from '@/renderer/utils/model/agentModes';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -18,6 +19,20 @@ import { savePreferredMode, savePreferredModelId, getAgentKey as getAgentKeyUtil
 import { usePresetAssistantResolver } from './usePresetAssistantResolver';
 import { useAgentAvailability } from './useAgentAvailability';
 import { useCustomAgentsLoader } from './useCustomAgentsLoader';
+
+const DEFAULT_REPLICA_MODEL_INFO: AcpModelInfo = {
+  source: 'models',
+  sourceDetail: 'persisted-model',
+  currentModelId: DEFAULT_REPLICA_MODEL,
+  currentModelLabel: 'Opus 4.7',
+  availableModels: [
+    { id: DEFAULT_REPLICA_MODEL, label: 'Opus 4.7' },
+    { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
+    { id: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
+    { id: 'gpt-5.4', label: 'gpt-5.4' },
+  ],
+  canSwitch: true,
+};
 
 export type GuidAgentSelectionResult = {
   selectedAgentKey: string;
@@ -365,10 +380,13 @@ export const useGuidAgentSelection = ({
         const preferred = (config?.[backend as AcpBackendAll] as Record<string, unknown>)?.preferredModelId as
           | string
           | undefined;
-        if (preferred) {
+        const cachedInfo = acpCachedModels[backend];
+        if (
+          preferred &&
+          (!cachedInfo?.availableModels?.length || cachedInfo.availableModels.some((model) => model.id === preferred))
+        ) {
           _setSelectedAcpModel(preferred);
         } else {
-          const cachedInfo = acpCachedModels[backend];
           _setSelectedAcpModel(cachedInfo?.currentModelId ?? null);
         }
       })
@@ -466,6 +484,10 @@ export const useGuidAgentSelection = ({
         availableModels: DEFAULT_CODEX_MODELS.map((m) => ({ id: m.id, label: m.label })),
         canSwitch: true,
       } satisfies AcpModelInfo;
+    }
+
+    if (backend === 'replica') {
+      return DEFAULT_REPLICA_MODEL_INFO;
     }
 
     return null;

@@ -28,6 +28,7 @@ const LEGACY_YOLO_MODE_MAP: Partial<Record<string, string>> = {
   codex: 'yolo',
   gemini: 'yolo',
   qwen: 'yolo',
+  droid: 'high',
 };
 
 async function resolvePreferredMode(backend: string): Promise<string | undefined> {
@@ -63,12 +64,16 @@ async function resolvePreferredAcpModelId(backend: string): Promise<string | und
   const acpConfig = await ConfigStorage.get('acp.config');
   const backendConfig = acpConfig?.[backend as AcpBackend] as { preferredModelId?: string } | undefined;
   const preferredModelId = backendConfig?.preferredModelId;
+  const cachedModels = await ConfigStorage.get('acp.cachedModels');
+  const cachedInfo = cachedModels?.[backend];
+  const cachedModelId = cachedInfo?.currentModelId;
   if (typeof preferredModelId === 'string' && preferredModelId.trim().length > 0) {
-    return preferredModelId;
+    const availableModels = cachedInfo?.availableModels ?? [];
+    if (availableModels.length === 0 || availableModels.some((model) => model.id === preferredModelId)) {
+      return preferredModelId;
+    }
   }
 
-  const cachedModels = await ConfigStorage.get('acp.cachedModels');
-  const cachedModelId = cachedModels?.[backend]?.currentModelId;
   if (typeof cachedModelId === 'string' && cachedModelId.trim().length > 0) {
     return cachedModelId;
   }

@@ -12,6 +12,13 @@ import {
 import type { McpServer } from '@agentclientprotocol/sdk';
 import type { AgentConfig, AgentSource, ConfigOption, InitialDesiredConfig, ModelSnapshot } from '@process/acp/types';
 import { getEnhancedEnv, loadFullShellEnvironment } from '@process/utils/shellEnv';
+
+function withDroidLaunchModel(args: string[] | undefined, modelId: string | undefined): string[] | undefined {
+  if (!modelId || !args?.includes('exec')) return args;
+  if (args.includes('--model') || args.some((arg) => arg.startsWith('--model='))) return args;
+  return [...args, '--model', modelId];
+}
+
 /**
  * Old ACP agent config type from AcpAgent/AcpAgentManager
  * Exported for use by AcpAgentV2 compatibility layer
@@ -86,6 +93,10 @@ export function toAgentConfig(old: OldAcpAgentConfig): AgentConfig {
   if (old.extra?.pendingConfigOptions && Object.keys(old.extra.pendingConfigOptions).length > 0) {
     initialDesired.configOptions = old.extra.pendingConfigOptions;
   }
+  const launchArgs =
+    backend === 'droid'
+      ? withDroidLaunchModel(old.extra?.customArgs ?? old.customArgs, initialDesired.model)
+      : (old.extra?.customArgs ?? old.customArgs);
   const hasInitialDesired = Object.keys(initialDesired).length > 0;
 
   return {
@@ -97,7 +108,7 @@ export function toAgentConfig(old: OldAcpAgentConfig): AgentConfig {
     agentId: old.id,
 
     command: old.extra?.cliPath ?? old.cliPath,
-    args: old.extra?.customArgs ?? old.customArgs,
+    args: launchArgs,
     env: old.extra?.customEnv ?? old.customEnv,
     cwd: old.workingDir,
 
@@ -251,6 +262,7 @@ const BACKEND_AUTH_KEYS: Record<string, string[]> = {
   codebuddy: ['CODEBUDDY_API_KEY'],
   qwen: ['DASHSCOPE_API_KEY'],
   gemini: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'],
+  droid: ['FACTORY_API_KEY'],
 };
 
 /**

@@ -353,6 +353,8 @@ export class TeamSessionService {
         return 'aionrs';
       case 'remote':
         return 'remote';
+      case 'replica':
+        return 'replica';
       case 'nanobot':
         return 'nanobot';
       case 'openclaw-gateway':
@@ -690,6 +692,7 @@ export class TeamSessionService {
     if (agentType === 'openclaw-gateway') return 'openclaw-gateway';
     if (agentType === 'nanobot') return 'nanobot';
     if (agentType === 'remote') return 'remote';
+    if (agentType === 'replica') return 'replica';
     return 'acp';
   }
 

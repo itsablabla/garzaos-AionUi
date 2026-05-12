@@ -175,6 +175,36 @@ describe('WorkerTaskManager', () => {
     expect(result).toBe(agent);
   });
 
+  it('builds persisted acp replica conversations as native replica tasks', async () => {
+    const agent = makeAgent('replica-conv', 'replica');
+    const factory = makeFactory(agent);
+    vi.mocked(repo.getConversation).mockReturnValue({
+      id: 'replica-conv',
+      type: 'acp',
+      extra: {
+        backend: 'replica',
+        currentModelId: 'claude-opus-4-7',
+      },
+    } as any);
+
+    const mgr = new WorkerTaskManager(factory as any, repo);
+    const result = await mgr.getOrBuildTask('replica-conv');
+
+    expect(factory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'replica-conv',
+        type: 'replica',
+        extra: expect.objectContaining({
+          backend: 'replica',
+          agentName: 'Replicas',
+          model: 'claude-opus-4-7',
+        }),
+      }),
+      undefined
+    );
+    expect(result).toBe(agent);
+  });
+
   it('caches task built from repo', async () => {
     const agent = makeAgent();
     const factory = makeFactory(agent);
