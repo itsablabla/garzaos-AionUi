@@ -1,4 +1,5 @@
 import { ReplicaAgent, type ReplicaAgentConfig } from '@process/agent/replica';
+import { DEFAULT_REPLICA_MODEL, resolveReplicaCodingAgent } from '@process/agent/replica/types';
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
 import type { TMessage } from '@/common/chat/chatLib';
@@ -44,6 +45,7 @@ class ReplicaAgentManager extends BaseAgentManager<ReplicaAgentManagerData> {
   }
 
   private async initAgent(data: ReplicaAgentManagerData): Promise<ReplicaAgent> {
+    const model = data.model || DEFAULT_REPLICA_MODEL;
     const config: ReplicaAgentConfig = {
       id: data.conversation_id,
       workingDir: data.workspace || process.cwd(),
@@ -52,8 +54,8 @@ class ReplicaAgentManager extends BaseAgentManager<ReplicaAgentManagerData> {
       replicaId: data.replicaId,
       chatId: data.chatId,
       environmentId: data.environmentId,
-      model: data.model,
-      codingAgent: data.codingAgent,
+      model,
+      codingAgent: data.codingAgent || resolveReplicaCodingAgent(model),
       thinkingLevel: data.thinkingLevel,
       planMode: data.planMode,
       onStreamEvent: (message) => this.handleStreamEvent(message),
