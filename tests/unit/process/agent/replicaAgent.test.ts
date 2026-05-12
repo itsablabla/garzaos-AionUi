@@ -57,7 +57,7 @@ describe('ReplicaAgent event translation', () => {
     expect(savedChatId).toBe('chat-1');
   });
 
-  it('passes autonomy mode and agent model when creating a replica', async () => {
+  it('passes agent model when creating a replica', async () => {
     const originalFetch = globalThis.fetch;
     let requestBody: Record<string, unknown> | undefined;
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -77,7 +77,6 @@ describe('ReplicaAgent event translation', () => {
         apiKey: 'test-key',
         codingAgent: 'claude',
         model: 'claude-opus-4-7',
-        planMode: true,
         thinkingLevel: 'max',
         onStreamEvent: () => {},
         onSignalEvent: () => {},
@@ -89,7 +88,6 @@ describe('ReplicaAgent event translation', () => {
         message: 'hello',
         coding_agent: 'claude',
         model: 'claude-opus-4-7',
-        plan_mode: true,
         thinking_level: 'max',
       });
     } finally {

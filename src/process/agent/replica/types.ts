@@ -1,16 +1,8 @@
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
+import type { ReplicaCodingAgent, ReplicaThinkingLevel } from '@/common/types/replica';
+export { DEFAULT_REPLICA_MODEL, resolveReplicaCodingAgent } from '@/common/types/replica';
 
-export type ReplicaCodingAgent = 'claude' | 'codex';
-export type ReplicaThinkingLevel = 'low' | 'medium' | 'high' | 'max';
-
-export const DEFAULT_REPLICA_MODEL = 'claude-opus-4-7';
-
-export function resolveReplicaCodingAgent(model: string | undefined): ReplicaCodingAgent {
-  if (!model) return 'claude';
-  const normalized = model.toLowerCase();
-  if (normalized.startsWith('gpt') || normalized.includes('codex')) return 'codex';
-  return 'claude';
-}
+export type { ReplicaCodingAgent, ReplicaThinkingLevel };
 
 export type ReplicaAgentConfig = {
   id: string;

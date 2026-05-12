@@ -16,6 +16,10 @@ import { useCallback, useRef } from 'react';
 import { type TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import type { AcpBackend, AvailableAgent, EffectiveAgentInfo } from '../types';
+import {
+  DEFAULT_REPLICA_MODEL,
+  resolveReplicaCodingAgent as resolveReplicaCodingAgentForModel,
+} from '@/common/types/replica';
 
 export type GuidSendDeps = {
   // Input state
@@ -87,10 +91,7 @@ export function resolveReplicaModeOptions(mode: string): {
 
 export function resolveReplicaCodingAgent(modelId: string | null | undefined): 'claude' | 'codex' | undefined {
   if (!modelId) return undefined;
-  const normalized = modelId.toLowerCase();
-  if (normalized.startsWith('gpt') || normalized.includes('codex')) return 'codex';
-  if (normalized.startsWith('claude')) return 'claude';
-  return undefined;
+  return resolveReplicaCodingAgentForModel(modelId);
 }
 
 /**
@@ -391,6 +392,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     // Replicas path — native API-key agent with cloud-hosted streaming events
     if (selectedAgent === 'replica' || (isPreset && finalEffectiveAgentType === 'replica')) {
       const replicaAgentInfo = agentInfo || findAgentByKey(selectedAgentKey);
+      const replicaModel = selectedAcpModel || DEFAULT_REPLICA_MODEL;
       const replicaConversationParams = buildAgentConversationParams({
         backend: 'replica',
         name: input,
@@ -409,12 +411,12 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
               excludeBuiltinSkills,
             }
           : undefined,
-        currentModelId: selectedAcpModel || undefined,
+        currentModelId: replicaModel,
         extra: {
           defaultFiles: files,
           enabledSkills: isPreset ? enabledSkills : undefined,
           excludeBuiltinSkills,
-          codingAgent: resolveReplicaCodingAgent(selectedAcpModel),
+          codingAgent: resolveReplicaCodingAgent(replicaModel),
           ...resolveReplicaModeOptions(selectedMode),
         },
       });

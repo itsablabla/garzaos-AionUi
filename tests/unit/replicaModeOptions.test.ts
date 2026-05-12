@@ -20,6 +20,6 @@ describe('resolveReplicaModeOptions', () => {
   it('maps selected Replicas models to coding agents', () => {
     expect(resolveReplicaCodingAgent('claude-opus-4-7')).toBe('claude');
     expect(resolveReplicaCodingAgent('gpt-5.3-codex')).toBe('codex');
-    expect(resolveReplicaCodingAgent('custom')).toBeUndefined();
+    expect(resolveReplicaCodingAgent('custom')).toBe('claude');
   });
 });

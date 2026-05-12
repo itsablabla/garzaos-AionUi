@@ -10,6 +10,7 @@ import type { IProvider } from '@/common/config/storage';
 import { ConfigStorage } from '@/common/config/storage';
 import type { AcpBackendAll, AcpSessionConfigOption } from '@/common/types/acpTypes';
 import type { AcpBackend, AcpBackendConfig, AcpModelInfo, AvailableAgent, EffectiveAgentInfo } from '../types';
+import { DEFAULT_REPLICA_MODEL } from '@/common/types/replica';
 import { DETECTED_AGENTS_SWR_KEY, fetchDetectedAgents } from '@/renderer/utils/model/agentTypes';
 import { getAgentModes } from '@/renderer/utils/model/agentModes';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -22,10 +23,10 @@ import { useCustomAgentsLoader } from './useCustomAgentsLoader';
 const DEFAULT_REPLICA_MODEL_INFO: AcpModelInfo = {
   source: 'models',
   sourceDetail: 'persisted-model',
-  currentModelId: 'claude-opus-4-7',
+  currentModelId: DEFAULT_REPLICA_MODEL,
   currentModelLabel: 'Opus 4.7',
   availableModels: [
-    { id: 'claude-opus-4-7', label: 'Opus 4.7' },
+    { id: DEFAULT_REPLICA_MODEL, label: 'Opus 4.7' },
     { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6' },
     { id: 'gpt-5.3-codex', label: 'gpt-5.3-codex' },
     { id: 'gpt-5.4', label: 'gpt-5.4' },
