@@ -139,6 +139,38 @@ describe('AcpSession lifecycle', () => {
     });
   });
 
+  it('does not reassert Droid model after session creation', async () => {
+    (client.createSession as ReturnType<typeof vi.fn>).mockResolvedValue({
+      sessionId: 'sess-123',
+      models: {
+        currentModelId: 'claude-opus-4-7',
+        availableModels: [
+          {
+            modelId: 'custom:Garza-Sonnet-0',
+            name: 'Garza Sonnet',
+          },
+        ],
+      },
+    });
+
+    const session = new AcpSession(
+      {
+        ...baseConfig,
+        agentBackend: 'droid',
+      },
+      clientFactory,
+      callbacks,
+      {
+        initialDesired: { model: 'custom:Garza-Sonnet-0' },
+      }
+    );
+    session.start();
+    await vi.waitFor(() => expect(session.status).toBe('active'));
+
+    expect(client.setModel).not.toHaveBeenCalled();
+    expect(client.setConfigOption).not.toHaveBeenCalled();
+  });
+
   it('start() notifies sessionId via callback', async () => {
     const session = new AcpSession(baseConfig, clientFactory, callbacks);
     session.start();

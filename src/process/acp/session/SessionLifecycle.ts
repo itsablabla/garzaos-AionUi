@@ -336,7 +336,7 @@ export class SessionLifecycle {
     if (!this._client || !this._sessionId) return;
     const pending = this.host.configTracker.getPendingChanges();
 
-    if (pending.model) {
+    if (pending.model && this.host.agentConfig.agentBackend !== 'droid') {
       let modelApplied = false;
       try {
         await this._client.setModel(this._sessionId, pending.model);
