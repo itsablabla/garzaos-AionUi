@@ -67,7 +67,11 @@
     "today": "今天",
     "yesterday": "昨天",
     "recent7Days": "最近7天",
-    "earlier": "更早"
+    "earlier": "更早",
+    "favorite": "收藏",
+    "unfavorite": "取消收藏",
+    "favoriteFailed": "收藏操作失败",
+    "favoritesSection": "收藏"
   },
   "historySearch": {
     "tooltip": "检索会话",
@@ -297,5 +301,43 @@
   },
   "skills": {
     "loaded": "已加载技能"
+  },
+  "sessions": {
+    "title": "会话中心",
+    "new": "新对话",
+    "searchPlaceholder": "搜索会话标题...",
+    "continue": "继续会话",
+    "modifiedAt": "修改：{{time}}",
+    "createdAt": "创建：{{time}}",
+    "loadFailed": "加载会话失败",
+    "empty": "暂无会话",
+    "emptySearch": "没有匹配的会话",
+    "startFirst": "开始第一个对话",
+    "recentLimitNote": "显示最近 10 个会话。更早的会话按创建日期归档。",
+    "archiveByDate": "按创建日期归档",
+    "folderTitleWithDate": "归档 · {{date}}",
+    "count": "{{count}} 个会话",
+    "folderSubtitleFallback": "点击查看当天会话",
+    "viewAll": "查看全部会话",
+    "categoryLabel": "分类",
+    "categoryUpdateFailed": "更新分类失败",
+    "category": {
+      "none": "未分类",
+      "code": "代码",
+      "plan": "计划",
+      "research": "研究 / 脚手架",
+      "debugging": "调试",
+      "disposable": "一次性 / 废弃",
+      "reference": "参考"
+    },
+    "filter": {
+      "allStatuses": "全部状态",
+      "favorites": "收藏",
+      "pinned": "置顶",
+      "team": "团队",
+      "allCategories": "全部分类",
+      "allBackends": "全部代理",
+      "datePlaceholder": "日期：YYYY-MM-DD"
+    }
   }
 }

@@ -67,7 +67,11 @@
     "today": "Сегодня",
     "yesterday": "Вчера",
     "recent7Days": "Последние 7 дней",
-    "earlier": "Ранее"
+    "earlier": "Ранее",
+    "favorite": "В избранное",
+    "unfavorite": "Убрать из избранного",
+    "favoriteFailed": "Не удалось выполнить действие с избранным",
+    "favoritesSection": "Избранное"
   },
   "historySearch": {
     "tooltip": "Поиск сообщений",
@@ -297,5 +301,43 @@
   },
   "skills": {
     "loaded": "Загруженные навыки"
+  },
+  "sessions": {
+    "title": "Центр сессий",
+    "new": "Новый чат",
+    "searchPlaceholder": "Поиск по названиям сессий...",
+    "continue": "Продолжить",
+    "modifiedAt": "Изменено: {{time}}",
+    "createdAt": "Создано: {{time}}",
+    "loadFailed": "Не удалось загрузить сессии",
+    "empty": "Сессий пока нет",
+    "emptySearch": "Сессии не найдены",
+    "startFirst": "Начать первый чат",
+    "recentLimitNote": "Показаны 10 последних сессий. Более старые сессии сгруппированы по дате создания.",
+    "archiveByDate": "Архив по дате создания",
+    "folderTitleWithDate": "Архив · {{date}}",
+    "count": "Сессий: {{count}}",
+    "folderSubtitleFallback": "Открыть сессии за эту дату",
+    "viewAll": "Показать все сессии",
+    "categoryLabel": "Категория",
+    "categoryUpdateFailed": "Не удалось обновить категорию",
+    "category": {
+      "none": "Без категории",
+      "code": "Код",
+      "plan": "План",
+      "research": "Исследование / заготовка",
+      "debugging": "Отладка",
+      "disposable": "Одноразовое / мусор",
+      "reference": "Справка"
+    },
+    "filter": {
+      "allStatuses": "Все статусы",
+      "favorites": "Избранное",
+      "pinned": "Закрепленные",
+      "team": "Команда",
+      "allCategories": "Все категории",
+      "allBackends": "Все агенты",
+      "datePlaceholder": "Дата: YYYY-MM-DD"
+    }
   }
 }

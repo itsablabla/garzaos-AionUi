@@ -12,14 +12,14 @@ import { CronJobIndicator } from '@/renderer/pages/cron';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { Checkbox, Dropdown, Menu, Spin, Tooltip } from '@arco-design/web-react';
-import { DeleteOne, EditOne, Export, MessageOne, Pushpin } from '@icon-park/react';
+import { DeleteOne, EditOne, Export, MessageOne, Pushpin, Star } from '@icon-park/react';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { ConversationRowProps } from './types';
 import { getBackendKeyFromConversation } from './utils/exportHelpers';
-import { isConversationPinned } from './utils/groupingHelpers';
+import { isConversationFavorited, isConversationPinned } from './utils/groupingHelpers';
 
 const ConversationRow: React.FC<ConversationRowProps> = (props) => {
   const {
@@ -44,11 +44,13 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     onDelete,
     onExport,
     onTogglePin,
+    onToggleFavorite,
     getJobStatus,
   } = props;
   const { t } = useTranslation();
   const { info: assistantInfo } = usePresetAssistantInfo(conversation);
   const isPinned = isConversationPinned(conversation);
+  const isFavorited = isConversationFavorited(conversation);
   const cronStatus = getJobStatus(conversation.id);
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   const inlineNameTooltipEnabled = !collapsed && !isMobile && !!conversation.name;
@@ -203,6 +205,10 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
                       onTogglePin(conversation);
                       return;
                     }
+                    if (key === 'favorite') {
+                      onToggleFavorite(conversation);
+                      return;
+                    }
                     if (key === 'rename') {
                       onEditStart(conversation);
                       return;
@@ -220,6 +226,14 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
                     <div className='flex items-center gap-8px'>
                       <Pushpin theme='outline' size='14' />
                       <span>{isPinned ? t('conversation.history.unpin') : t('conversation.history.pin')}</span>
+                    </div>
+                  </Menu.Item>
+                  <Menu.Item key='favorite'>
+                    <div className='flex items-center gap-8px'>
+                      <Star theme={isFavorited ? 'filled' : 'outline'} size='14' />
+                      <span>
+                        {isFavorited ? t('conversation.history.unfavorite') : t('conversation.history.favorite')}
+                      </span>
                     </div>
                   </Menu.Item>
                   <Menu.Item key='rename'>

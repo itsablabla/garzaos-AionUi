@@ -67,7 +67,11 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "삭제되었습니다",
-    "deleteFailed": "삭제에 실패했습니다"
+    "deleteFailed": "삭제에 실패했습니다",
+    "favorite": "즐겨찾기",
+    "unfavorite": "즐겨찾기 해제",
+    "favoriteFailed": "즐겨찾기 작업 실패",
+    "favoritesSection": "즐겨찾기"
   },
   "historySearch": {
     "tooltip": "메시지 검색",
@@ -297,5 +301,43 @@
   },
   "skills": {
     "loaded": "로드된 스킬"
+  },
+  "sessions": {
+    "title": "세션 센터",
+    "new": "새 채팅",
+    "searchPlaceholder": "세션 제목 검색...",
+    "continue": "계속",
+    "modifiedAt": "수정: {{time}}",
+    "createdAt": "생성: {{time}}",
+    "loadFailed": "세션을 불러오지 못했습니다",
+    "empty": "세션이 없습니다",
+    "emptySearch": "검색과 일치하는 세션이 없습니다",
+    "startFirst": "첫 채팅 시작",
+    "recentLimitNote": "최근 10개 세션을 표시합니다. 이전 세션은 생성 날짜별로 보관됩니다.",
+    "archiveByDate": "생성 날짜별 보관",
+    "folderTitleWithDate": "보관함 · {{date}}",
+    "count": "세션 {{count}}개",
+    "folderSubtitleFallback": "이 날짜의 세션 보기",
+    "viewAll": "모든 세션 보기",
+    "categoryLabel": "카테고리",
+    "categoryUpdateFailed": "카테고리 업데이트 실패",
+    "category": {
+      "none": "카테고리 없음",
+      "code": "코드",
+      "plan": "계획",
+      "research": "리서치 / 스캐폴드",
+      "debugging": "디버깅",
+      "disposable": "일회용 / 폐기",
+      "reference": "참조"
+    },
+    "filter": {
+      "allStatuses": "모든 상태",
+      "favorites": "즐겨찾기",
+      "pinned": "고정됨",
+      "team": "팀",
+      "allCategories": "모든 카테고리",
+      "allBackends": "모든 에이전트",
+      "datePlaceholder": "날짜: YYYY-MM-DD"
+    }
   }
 }

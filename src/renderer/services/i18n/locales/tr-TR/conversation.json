@@ -67,7 +67,11 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "Başarıyla silindi",
-    "deleteFailed": "Silme başarısız oldu"
+    "deleteFailed": "Silme başarısız oldu",
+    "favorite": "Favorilere ekle",
+    "unfavorite": "Favorilerden çıkar",
+    "favoriteFailed": "Favori işlemi başarısız",
+    "favoritesSection": "Favoriler"
   },
   "historySearch": {
     "tooltip": "Mesajları ara",
@@ -299,5 +303,43 @@
   },
   "skills": {
     "loaded": "Yüklenen Beceriler"
+  },
+  "sessions": {
+    "title": "Oturum Merkezi",
+    "new": "Yeni Sohbet",
+    "searchPlaceholder": "Oturum başlıklarında ara...",
+    "continue": "Devam et",
+    "modifiedAt": "Değiştirildi: {{time}}",
+    "createdAt": "Oluşturuldu: {{time}}",
+    "loadFailed": "Oturumlar yüklenemedi",
+    "empty": "Henüz oturum yok",
+    "emptySearch": "Aramanızla eşleşen oturum yok",
+    "startFirst": "İlk sohbeti başlat",
+    "recentLimitNote": "En son 10 oturum gösteriliyor. Daha eski oturumlar oluşturma tarihine göre arşivlenir.",
+    "archiveByDate": "Oluşturma tarihine göre arşiv",
+    "folderTitleWithDate": "Arşiv · {{date}}",
+    "count": "{{count}} oturum",
+    "folderSubtitleFallback": "Bu tarihteki oturumları görüntüle",
+    "viewAll": "Tüm oturumları görüntüle",
+    "categoryLabel": "Kategori",
+    "categoryUpdateFailed": "Kategori güncellenemedi",
+    "category": {
+      "none": "Kategori yok",
+      "code": "Kod",
+      "plan": "Plan",
+      "research": "Araştırma / İskele",
+      "debugging": "Hata ayıklama",
+      "disposable": "Geçici / Çöp",
+      "reference": "Referans"
+    },
+    "filter": {
+      "allStatuses": "Tüm durumlar",
+      "favorites": "Favoriler",
+      "pinned": "Sabitlenenler",
+      "team": "Takım",
+      "allCategories": "Tüm kategoriler",
+      "allBackends": "Tüm ajanlar",
+      "datePlaceholder": "Tarih: YYYY-MM-DD"
+    }
   }
 }

@@ -67,7 +67,11 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "recent7Days": "Last 7 Days",
-    "earlier": "Earlier"
+    "earlier": "Earlier",
+    "favorite": "Favorite",
+    "unfavorite": "Unfavorite",
+    "favoriteFailed": "Favorite operation failed",
+    "favoritesSection": "Favorites"
   },
   "historySearch": {
     "tooltip": "Search messages",
@@ -297,5 +301,43 @@
   },
   "skills": {
     "loaded": "Loaded Skills"
+  },
+  "sessions": {
+    "title": "Sessions Center",
+    "new": "New Chat",
+    "searchPlaceholder": "Search session titles...",
+    "continue": "Continue",
+    "modifiedAt": "Modified: {{time}}",
+    "createdAt": "Created: {{time}}",
+    "loadFailed": "Failed to load sessions",
+    "empty": "No sessions yet",
+    "emptySearch": "No sessions match your search",
+    "startFirst": "Start your first chat",
+    "recentLimitNote": "Showing the 10 most recent sessions. Older sessions are archived by creation date.",
+    "archiveByDate": "Archive by creation date",
+    "folderTitleWithDate": "Archive · {{date}}",
+    "count": "{{count}} sessions",
+    "folderSubtitleFallback": "Open to view sessions from this date",
+    "viewAll": "View all sessions",
+    "categoryLabel": "Category",
+    "categoryUpdateFailed": "Failed to update category",
+    "category": {
+      "none": "No category",
+      "code": "Code",
+      "plan": "Plan",
+      "research": "Research / Scaffold",
+      "debugging": "Debugging",
+      "disposable": "Disposable / Trash",
+      "reference": "Reference"
+    },
+    "filter": {
+      "allStatuses": "All statuses",
+      "favorites": "Favorites",
+      "pinned": "Pinned",
+      "team": "Team",
+      "allCategories": "All categories",
+      "allBackends": "All agents",
+      "datePlaceholder": "Date: YYYY-MM-DD"
+    }
   }
 }

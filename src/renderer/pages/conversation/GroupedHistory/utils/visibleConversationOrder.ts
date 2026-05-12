@@ -7,6 +7,7 @@ type VisibleConversationOrderInput = GroupedHistoryResult & {
 
 export const buildVisibleConversationIds = ({
   pinnedConversations,
+  favoriteConversations,
   timelineSections,
   expandedWorkspaces,
   siderCollapsed,
@@ -15,6 +16,10 @@ export const buildVisibleConversationIds = ({
   const visibleConversationIds: string[] = [];
 
   pinnedConversations.forEach((conversation) => {
+    visibleConversationIds.push(conversation.id);
+  });
+
+  favoriteConversations.forEach((conversation) => {
     visibleConversationIds.push(conversation.id);
   });
 

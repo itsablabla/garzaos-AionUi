@@ -54,6 +54,7 @@ const createConversation = (id: string): TChatConversation => ({
 
 const groupedHistory: GroupedHistoryResult = {
   pinnedConversations: [createConversation('pinned-1')],
+  favoriteConversations: [],
   timelineSections: [],
 };
 

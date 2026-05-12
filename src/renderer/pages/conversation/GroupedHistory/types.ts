@@ -26,6 +26,7 @@ export type TimelineSection = {
 
 export type GroupedHistoryResult = {
   pinnedConversations: TChatConversation[];
+  favoriteConversations: TChatConversation[];
   timelineSections: TimelineSection[];
 };
 
@@ -58,6 +59,7 @@ export type ConversationRowProps = {
   onDelete: (conversationId: string) => void;
   onExport?: (conversation: TChatConversation) => void;
   onTogglePin: (conversation: TChatConversation) => void;
+  onToggleFavorite: (conversation: TChatConversation) => void;
   getJobStatus: (conversationId: string) => 'none' | 'active' | 'paused' | 'error' | 'unread';
 };
 
