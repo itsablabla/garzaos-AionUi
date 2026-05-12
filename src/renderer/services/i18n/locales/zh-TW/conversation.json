@@ -67,7 +67,9 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "刪除成功",
-    "deleteFailed": "刪除失敗"
+    "deleteFailed": "刪除失敗",
+    "projectsSection": "專案",
+    "defaultProjectGroup": "工作空間"
   },
   "historySearch": {
     "tooltip": "搜尋訊息",

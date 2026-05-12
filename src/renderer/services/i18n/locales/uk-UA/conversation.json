@@ -67,7 +67,9 @@
     "today": "Сьогодні",
     "yesterday": "Вчора",
     "recent7Days": "Останні 7 днів",
-    "earlier": "Раніше"
+    "earlier": "Раніше",
+    "projectsSection": "Проєкти",
+    "defaultProjectGroup": "Робочі області"
   },
   "historySearch": {
     "tooltip": "Пошук повідомлень",

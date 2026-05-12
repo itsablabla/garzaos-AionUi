@@ -67,7 +67,9 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "삭제되었습니다",
-    "deleteFailed": "삭제에 실패했습니다"
+    "deleteFailed": "삭제에 실패했습니다",
+    "projectsSection": "프로젝트",
+    "defaultProjectGroup": "작업 공간"
   },
   "historySearch": {
     "tooltip": "메시지 검색",

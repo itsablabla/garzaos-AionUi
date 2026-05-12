@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { addEventListener } from '@/renderer/utils/emitter';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import type { ProjectHierarchy } from '@/common/types/projectHierarchy';
 
 /**
  * Whitelist of message types that indicate content generation is in progress.
@@ -54,6 +55,7 @@ type ConversationListSyncSnapshot = {
   conversations: TChatConversation[];
   generatingConversationIds: Set<string>;
   completionUnreadConversationIds: Set<string>;
+  projectHierarchy: ProjectHierarchy;
 };
 
 const listeners = new Set<() => void>();
@@ -63,11 +65,13 @@ let conversationsState: TChatConversation[] = [];
 let generatingConversationIdsState = new Set<string>();
 let completionUnreadConversationIdsState = new Set<string>();
 let conversationIdsState = new Set<string>();
+let projectHierarchyState: ProjectHierarchy = { groups: [] };
 let activeConversationIdState: string | null = null;
 let snapshotState: ConversationListSyncSnapshot = {
   conversations: conversationsState,
   generatingConversationIds: generatingConversationIdsState,
   completionUnreadConversationIds: completionUnreadConversationIdsState,
+  projectHierarchy: projectHierarchyState,
 };
 
 const emitStoreChange = () => {
@@ -75,6 +79,7 @@ const emitStoreChange = () => {
     conversations: conversationsState,
     generatingConversationIds: generatingConversationIdsState,
     completionUnreadConversationIds: completionUnreadConversationIdsState,
+    projectHierarchy: projectHierarchyState,
   };
   listeners.forEach((listener) => listener());
 };
@@ -89,9 +94,12 @@ const subscribeConversationListSync = (listener: () => void) => {
 const getConversationListSyncSnapshot = (): ConversationListSyncSnapshot => snapshotState;
 
 const refreshConversations = () => {
-  void ipcBridge.database.getUserConversations
-    .invoke({ page: 0, pageSize: 10000 })
-    .then((data) => {
+  void Promise.all([
+    ipcBridge.database.getUserConversations.invoke({ page: 0, pageSize: 10000 }),
+    ipcBridge.projectHierarchy.list.invoke(),
+  ])
+    .then(([data, hierarchy]) => {
+      projectHierarchyState = hierarchy ?? { groups: [] };
       if (data && Array.isArray(data)) {
         const filteredData = data.filter((conv) => {
           const extra = conv.extra as { isHealthCheck?: boolean; teamId?: string } | undefined;
@@ -215,11 +223,12 @@ export const useConversationListSync = () => {
     initializeConversationListSyncStore();
   }, []);
 
-  const { conversations, generatingConversationIds, completionUnreadConversationIds } = useSyncExternalStore(
-    subscribeConversationListSync,
-    getConversationListSyncSnapshot,
-    getConversationListSyncSnapshot
-  );
+  const { conversations, generatingConversationIds, completionUnreadConversationIds, projectHierarchy } =
+    useSyncExternalStore(
+      subscribeConversationListSync,
+      getConversationListSyncSnapshot,
+      getConversationListSyncSnapshot
+    );
 
   const clearCompletionUnread = useCallback((conversationId: string) => {
     clearCompletionUnreadState(conversationId);
@@ -249,5 +258,6 @@ export const useConversationListSync = () => {
     hasCompletionUnread,
     clearCompletionUnread,
     setActiveConversation,
+    projectHierarchy,
   };
 };

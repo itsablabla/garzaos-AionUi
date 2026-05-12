@@ -67,7 +67,9 @@
     "pinFailed": "Pin operation failed",
     "pinnedSection": "Pinned",
     "deleteSuccess": "Başarıyla silindi",
-    "deleteFailed": "Silme başarısız oldu"
+    "deleteFailed": "Silme başarısız oldu",
+    "projectsSection": "Projeler",
+    "defaultProjectGroup": "Çalışma Alanları"
   },
   "historySearch": {
     "tooltip": "Mesajları ara",

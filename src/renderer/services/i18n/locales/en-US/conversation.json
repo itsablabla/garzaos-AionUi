@@ -67,7 +67,9 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "recent7Days": "Last 7 Days",
-    "earlier": "Earlier"
+    "earlier": "Earlier",
+    "projectsSection": "Projects",
+    "defaultProjectGroup": "Workspaces"
   },
   "historySearch": {
     "tooltip": "Search messages",

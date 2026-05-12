@@ -20,6 +20,7 @@ import { useParams } from 'react-router-dom';
 import WorkspaceCollapse from '../components/WorkspaceCollapse';
 import ConversationRow from './ConversationRow';
 import DragOverlayContent from './DragOverlayContent';
+import ProjectHierarchyTree from './ProjectHierarchyTree';
 import SortableConversationRow from './SortableConversationRow';
 import { useBatchSelection } from './hooks/useBatchSelection';
 import { useConversationActions } from './hooks/useConversationActions';
@@ -63,6 +64,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     expandedWorkspaces,
     pinnedConversations,
     timelineSections,
+    projectGroups,
     handleToggleWorkspace,
   } = useConversations();
 
@@ -173,6 +175,23 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     const rowProps = getConversationRowProps(conversation);
     return <ConversationRow key={conversation.id} {...rowProps} />;
   };
+  const projectConversationIds = useMemo(() => {
+    const ids = new Set<string>();
+    projectGroups.forEach((group) => {
+      group.folders.forEach((folder) => {
+        conversations.forEach((conversation) => {
+          const extra = conversation.extra as { projectFolderId?: string } | undefined;
+          const fallbackFolderId = conversation.extra?.workspace
+            ? `workspace:${encodeURIComponent(conversation.extra.workspace)}`
+            : undefined;
+          if (extra?.projectFolderId === folder.id || (!extra?.projectFolderId && fallbackFolderId === folder.id)) {
+            ids.add(conversation.id);
+          }
+        });
+      });
+    });
+    return ids;
+  }, [conversations, projectGroups]);
 
   // Collect all sortable IDs for the pinned section
   const pinnedIds = useMemo(() => pinnedConversations.map((c) => c.id), [pinnedConversations]);
@@ -394,6 +413,15 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
           </DragOverlay>
         </DndContext>
 
+        <ProjectHierarchyTree
+          groups={projectGroups}
+          conversations={conversations}
+          expandedWorkspaces={expandedWorkspaces}
+          collapsed={collapsed}
+          onToggleWorkspace={handleToggleWorkspace}
+          renderConversation={renderConversation}
+        />
+
         {timelineSections.map((section) => (
           <div key={section.timeline} className='mb-8px min-w-0'>
             {!collapsed && (
@@ -416,6 +444,9 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
               section.items.map((item) => {
                 if (item.type === 'workspace' && item.workspaceGroup) {
                   const group = item.workspaceGroup;
+                  if (group.conversations.every((conversation) => projectConversationIds.has(conversation.id))) {
+                    return null;
+                  }
                   return (
                     <div key={group.workspace} className='min-w-0'>
                       <WorkspaceCollapse
@@ -431,7 +462,9 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                         }
                       >
                         <div className={classNames('flex flex-col gap-2px min-w-0', { 'mt-2px': !collapsed })}>
-                          {group.conversations.map((conversation) => renderConversation(conversation))}
+                          {group.conversations
+                            .filter((conversation) => !projectConversationIds.has(conversation.id))
+                            .map((conversation) => renderConversation(conversation))}
                         </div>
                       </WorkspaceCollapse>
                     </div>
@@ -439,6 +472,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                 }
 
                 if (item.type === 'conversation' && item.conversation) {
+                  if (projectConversationIds.has(item.conversation.id)) return null;
                   return renderConversation(item.conversation);
                 }
 

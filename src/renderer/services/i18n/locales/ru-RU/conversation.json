@@ -67,7 +67,9 @@
     "today": "Сегодня",
     "yesterday": "Вчера",
     "recent7Days": "Последние 7 дней",
-    "earlier": "Ранее"
+    "earlier": "Ранее",
+    "projectsSection": "Проекты",
+    "defaultProjectGroup": "Рабочие области"
   },
   "historySearch": {
     "tooltip": "Поиск сообщений",

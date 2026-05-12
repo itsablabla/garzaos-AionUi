@@ -56,6 +56,42 @@ export function initSchema(db: ISqliteDriver): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_conversations_user_updated ON conversations(user_id, updated_at DESC)');
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_conversations_project_folder
+    ON conversations(json_extract(extra, '$.projectFolderId'), updated_at DESC)`);
+
+  // Project hierarchy tables (Msty-style group -> folder -> conversation navigation)
+  db.exec(`CREATE TABLE IF NOT EXISTS folder_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    deleted_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_folder_groups_deleted_sort ON folder_groups(deleted_at, sort_order, id)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS project_folders (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    workspace TEXT NOT NULL,
+    color TEXT,
+    git_branch TEXT,
+    default_agent_type TEXT,
+    group_id TEXT NOT NULL,
+    sort_order_in_group INTEGER NOT NULL DEFAULT 0,
+    is_open INTEGER NOT NULL DEFAULT 1,
+    deleted_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (group_id) REFERENCES folder_groups(id) ON DELETE CASCADE
+  )`);
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_project_folders_group_sort ON project_folders(group_id, deleted_at, sort_order_in_group, id)'
+  );
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_project_folders_active_workspace ON project_folders(workspace) WHERE deleted_at IS NULL'
+  );
 
   // Messages table (消息表 - 存储TMessage)
   db.exec(`CREATE TABLE IF NOT EXISTS messages (
@@ -151,4 +187,4 @@ export function setDatabaseVersion(db: ISqliteDriver, version: number): void {
  * Current database schema version
  * Update this when adding new migrations in migrations.ts
  */
-export const CURRENT_DB_VERSION = 26;
+export const CURRENT_DB_VERSION = 27;
