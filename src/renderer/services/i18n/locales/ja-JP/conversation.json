@@ -297,5 +297,24 @@
   },
   "skills": {
     "loaded": "ロード済みスキル"
+  },
+  "org": {
+    "workspace": "ワークスペース",
+    "newProject": "新規プロジェクト",
+    "recents": "最近",
+    "emptyProject": "会話はまだありません",
+    "moveToProject": "プロジェクトへ移動…",
+    "revealInSidebar": "サイドバーで表示",
+    "renameWorkspace": "ワークスペース名を変更",
+    "deleteWorkspace": "ワークスペースを削除",
+    "renameProject": "プロジェクト名を変更",
+    "deleteProject": "プロジェクトを削除",
+    "namePlaceholder": "名前を入力",
+    "moveSuccess": "プロジェクトへ移動しました",
+    "moveFailed": "会話の移動に失敗しました",
+    "create-workspace": "新規ワークスペース",
+    "rename-workspace": "ワークスペース名を変更",
+    "create-project": "新規プロジェクト",
+    "rename-project": "プロジェクト名を変更"
   }
 }

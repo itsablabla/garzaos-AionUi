@@ -297,5 +297,24 @@
   },
   "skills": {
     "loaded": "已載入技能"
+  },
+  "org": {
+    "workspace": "工作區",
+    "newProject": "新增專案",
+    "recents": "最近",
+    "emptyProject": "尚無對話",
+    "moveToProject": "移至專案…",
+    "revealInSidebar": "在側邊欄中顯示",
+    "renameWorkspace": "重新命名工作區",
+    "deleteWorkspace": "刪除工作區",
+    "renameProject": "重新命名專案",
+    "deleteProject": "刪除專案",
+    "namePlaceholder": "輸入名稱",
+    "moveSuccess": "已移至專案",
+    "moveFailed": "移動對話失敗",
+    "create-workspace": "新增工作區",
+    "rename-workspace": "重新命名工作區",
+    "create-project": "新增專案",
+    "rename-project": "重新命名專案"
   }
 }

@@ -297,5 +297,24 @@
   },
   "skills": {
     "loaded": "Loaded Skills"
+  },
+  "org": {
+    "workspace": "Workspace",
+    "newProject": "New Project",
+    "recents": "Recents",
+    "emptyProject": "No conversations yet",
+    "moveToProject": "Move to Project…",
+    "revealInSidebar": "Reveal in Sidebar",
+    "renameWorkspace": "Rename Workspace",
+    "deleteWorkspace": "Delete Workspace",
+    "renameProject": "Rename Project",
+    "deleteProject": "Delete Project",
+    "namePlaceholder": "Enter a name",
+    "moveSuccess": "Moved to project",
+    "moveFailed": "Failed to move conversation",
+    "create-workspace": "New Workspace",
+    "rename-workspace": "Rename Workspace",
+    "create-project": "New Project",
+    "rename-project": "Rename Project"
   }
 }

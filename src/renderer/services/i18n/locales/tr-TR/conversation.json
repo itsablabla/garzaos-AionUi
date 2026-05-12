@@ -299,5 +299,24 @@
   },
   "skills": {
     "loaded": "Yüklenen Beceriler"
+  },
+  "org": {
+    "workspace": "Çalışma alanı",
+    "newProject": "Yeni Proje",
+    "recents": "Son kullanılanlar",
+    "emptyProject": "Henüz konuşma yok",
+    "moveToProject": "Projeye Taşı…",
+    "revealInSidebar": "Kenar çubuğunda göster",
+    "renameWorkspace": "Çalışma alanını yeniden adlandır",
+    "deleteWorkspace": "Çalışma alanını sil",
+    "renameProject": "Projeyi yeniden adlandır",
+    "deleteProject": "Projeyi sil",
+    "namePlaceholder": "Bir ad girin",
+    "moveSuccess": "Projeye taşındı",
+    "moveFailed": "Konuşma taşınamadı",
+    "create-workspace": "Yeni Çalışma Alanı",
+    "rename-workspace": "Çalışma Alanını Yeniden Adlandır",
+    "create-project": "Yeni Proje",
+    "rename-project": "Projeyi Yeniden Adlandır"
   }
 }

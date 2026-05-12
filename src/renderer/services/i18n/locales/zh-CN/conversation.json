@@ -297,5 +297,24 @@
   },
   "skills": {
     "loaded": "已加载技能"
+  },
+  "org": {
+    "workspace": "工作区",
+    "newProject": "新建项目",
+    "recents": "最近",
+    "emptyProject": "暂无会话",
+    "moveToProject": "移动到项目…",
+    "revealInSidebar": "在侧边栏中显示",
+    "renameWorkspace": "重命名工作区",
+    "deleteWorkspace": "删除工作区",
+    "renameProject": "重命名项目",
+    "deleteProject": "删除项目",
+    "namePlaceholder": "输入名称",
+    "moveSuccess": "已移动到项目",
+    "moveFailed": "移动会话失败",
+    "create-workspace": "新建工作区",
+    "rename-workspace": "重命名工作区",
+    "create-project": "新建项目",
+    "rename-project": "重命名项目"
   }
 }

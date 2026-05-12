@@ -31,6 +31,18 @@ export const STORAGE_KEYS = {
 
   /** Language preference / 语言偏好 */
   LANGUAGE: 'aionui_language',
+
+  /** Org workspaces / 组织工作区 */
+  ORG_WORKSPACES: 'aionui_org_workspaces',
+
+  /** Org projects / 组织项目 */
+  ORG_PROJECTS: 'aionui_org_projects',
+
+  /** Org sidebar expansion state / 组织侧边栏展开状态 */
+  ORG_EXPANSION: 'aionui_org_expansion',
+
+  /** Active org workspace / 当前组织工作区 */
+  ORG_ACTIVE_WORKSPACE: 'aionui_org_active_workspace',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

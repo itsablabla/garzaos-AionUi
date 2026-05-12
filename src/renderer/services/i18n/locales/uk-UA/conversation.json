@@ -293,5 +293,24 @@
   "thinking": {
     "complete": "Роздуми завершено",
     "label": "Розмірковує..."
+  },
+  "org": {
+    "workspace": "Робочий простір",
+    "newProject": "Новий проєкт",
+    "recents": "Нещодавні",
+    "emptyProject": "Розмов ще немає",
+    "moveToProject": "Перемістити до проєкту…",
+    "revealInSidebar": "Показати в бічній панелі",
+    "renameWorkspace": "Перейменувати робочий простір",
+    "deleteWorkspace": "Видалити робочий простір",
+    "renameProject": "Перейменувати проєкт",
+    "deleteProject": "Видалити проєкт",
+    "namePlaceholder": "Введіть назву",
+    "moveSuccess": "Переміщено до проєкту",
+    "moveFailed": "Не вдалося перемістити розмову",
+    "create-workspace": "Новий робочий простір",
+    "rename-workspace": "Перейменувати робочий простір",
+    "create-project": "Новий проєкт",
+    "rename-project": "Перейменувати проєкт"
   }
 }

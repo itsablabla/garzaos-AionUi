@@ -5,12 +5,13 @@
  */
 
 import { ipcBridge } from '@/common';
+import { readProjects } from '@/common/utils/orgStorage';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { emitter } from '@/renderer/utils/emitter';
 import { cleanupSiderTooltips } from '@/renderer/utils/ui/siderTooltip';
 import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
-import { Dropdown, Menu, Message, Tag } from '@arco-design/web-react';
+import { Dropdown, Menu, Message, Modal, Select, Tag } from '@arco-design/web-react';
 import { Close, Plus, Robot } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +33,7 @@ interface TabFadeState {
 interface ConversationTabViewProps {
   tabId: string;
   tabName: string;
+  breadcrumb?: string[];
   isActive: boolean;
   isMobile: boolean;
   contextMenu: React.ReactNode;
@@ -42,6 +44,7 @@ interface ConversationTabViewProps {
 const ConversationTabView: React.FC<ConversationTabViewProps> = ({
   tabId,
   tabName,
+  breadcrumb,
   isActive,
   isMobile,
   contextMenu,
@@ -56,9 +59,17 @@ const ConversationTabView: React.FC<ConversationTabViewProps> = ({
         className={tabClassName}
         style={{ borderRight: '1px solid var(--border-base)' }}
         onClick={() => onSwitch(tabId)}
-        title={isMobile ? undefined : tabName}
+        title={isMobile ? undefined : [tabName, breadcrumb?.join(' › ')].filter(Boolean).join(' — ')}
       >
-        <span className='text-15px whitespace-nowrap overflow-hidden text-ellipsis select-none flex-1'>{tabName}</span>
+        <span className='min-w-0 flex-1 flex flex-col justify-center select-none'>
+          <span className='text-14px leading-18px whitespace-nowrap overflow-hidden text-ellipsis'>{tabName}</span>
+          {breadcrumb && breadcrumb.length > 0 && (
+            <span className='text-11px leading-14px whitespace-nowrap overflow-hidden text-ellipsis text-t-tertiary'>
+              {breadcrumb.join(' › ')}
+            </span>
+          )}
+        </span>
+        <span className='w-6px h-6px rounded-full bg-[rgb(var(--primary-6))] shrink-0' />
         <Close
           theme='outline'
           size='14'
@@ -117,6 +128,9 @@ const ConversationTabs: React.FC = () => {
   const { t, i18n } = useTranslation();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [tabFadeState, setTabFadeState] = useState<TabFadeState>({ left: false, right: false });
+  const [moveTabId, setMoveTabId] = useState<string | null>(null);
+  const [moveProjectId, setMoveProjectId] = useState<string>('');
+  const projectOptions = readProjects().map((project) => ({ label: project.name, value: project.id }));
 
   const { cliAgents, presetAssistants, isLoading } = useConversationAgents();
   const defaultConversationName = t('conversation.welcome.newConversation');
@@ -208,6 +222,10 @@ const ConversationTabs: React.FC = () => {
       }
 
       const workspace = currentTab.workspace;
+      const tabOrgExtra = {
+        workspace_id: currentTab.workspace_id,
+        project_id: currentTab.project_id,
+      };
 
       try {
         // [BUG-3] Build params inside try block: getDefaultGeminiModel() may throw if no model configured
@@ -222,6 +240,7 @@ const ConversationTabs: React.FC = () => {
             return;
           }
           params = await buildCliAgentParams(agent, workspace);
+          params.extra = { ...params.extra, ...tabOrgExtra };
         } else if (key.startsWith('preset:')) {
           const assistantId = key.slice(7);
           // [BUG-6] Null check: find() may return undefined
@@ -231,6 +250,7 @@ const ConversationTabs: React.FC = () => {
             return;
           }
           params = await buildPresetAssistantParams(agent, workspace, i18n.language);
+          params.extra = { ...params.extra, ...tabOrgExtra };
         } else {
           return;
         }
@@ -322,6 +342,28 @@ const ConversationTabs: React.FC = () => {
     );
   }, [cliAgents, presetAssistants, handleCreateConversation, t]);
 
+  const handleMoveTabConfirm = useCallback(async () => {
+    if (!moveTabId || !moveProjectId) return;
+    const project = readProjects().find((item) => item.id === moveProjectId);
+    if (!project) return;
+    const success = await ipcBridge.conversation.update.invoke({
+      id: moveTabId,
+      updates: {
+        extra: {
+          workspace_id: project.workspace_id,
+          project_id: project.id,
+        },
+      },
+      mergeExtra: true,
+    });
+    if (success) {
+      Message.success(t('conversation.org.moveSuccess'));
+      setMoveTabId(null);
+    } else {
+      Message.error(t('conversation.org.moveFailed'));
+    }
+  }, [moveProjectId, moveTabId, t]);
+
   // 生成右键菜单内容
   const getContextMenu = useCallback(
     (tabId: string) => {
@@ -348,9 +390,18 @@ const ConversationTabs: React.FC = () => {
                 closeOtherTabs(tabId);
                 void navigate(`/conversation/${tabId}`);
                 break;
+              case 'move-project':
+                setMoveTabId(tabId);
+                setMoveProjectId(openTabs.find((tab) => tab.id === tabId)?.project_id || '');
+                break;
+              case 'reveal-sidebar':
+                document.getElementById('c-' + tabId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                break;
             }
           }}
         >
+          <Menu.Item key='move-project'>{t('conversation.org.moveToProject')}</Menu.Item>
+          <Menu.Item key='reveal-sidebar'>{t('conversation.org.revealInSidebar')}</Menu.Item>
           <Menu.Item key='close-others' disabled={!hasOtherTabs}>
             {t('conversation.tabs.closeOthers')}
           </Menu.Item>
@@ -381,45 +432,60 @@ const ConversationTabs: React.FC = () => {
   const isDropdownDisabled = isLoading || (!cliAgents.length && !presetAssistants.length);
 
   return (
-    <div className='relative shrink-0 bg-2 min-h-40px'>
-      <div className='relative flex items-center h-40px w-full border-t border-x border-solid border-[color:var(--border-base)]'>
-        {/* Tabs 滚动区域 */}
-        <div
-          ref={tabsContainerRef}
-          className='flex items-center h-full flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
-        >
-          {openTabs.map((tab) => (
-            <ConversationTabView
-              key={tab.id}
-              tabId={tab.id}
-              tabName={tab.name}
-              isActive={tab.id === activeTabId}
-              isMobile={isMobile}
-              contextMenu={getContextMenu(tab.id)}
-              onSwitch={handleSwitchTab}
-              onClose={handleCloseTab}
-            />
-          ))}
+    <>
+      <Modal
+        title={t('conversation.org.moveToProject')}
+        visible={Boolean(moveTabId)}
+        onOk={() => void handleMoveTabConfirm()}
+        onCancel={() => setMoveTabId(null)}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        alignCenter
+        getPopupContainer={() => document.body}
+      >
+        <Select value={moveProjectId} onChange={setMoveProjectId} options={projectOptions} className='w-full' />
+      </Modal>
+      <div className='relative shrink-0 bg-2 min-h-40px'>
+        <div className='relative flex items-center h-40px w-full border-t border-x border-solid border-[color:var(--border-base)]'>
+          {/* Tabs 滚动区域 */}
+          <div
+            ref={tabsContainerRef}
+            className='flex items-center h-full flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
+          >
+            {openTabs.map((tab) => (
+              <ConversationTabView
+                key={tab.id}
+                tabId={tab.id}
+                tabName={tab.name}
+                breadcrumb={tab.project_breadcrumb}
+                isActive={tab.id === activeTabId}
+                isMobile={isMobile}
+                contextMenu={getContextMenu(tab.id)}
+                onSwitch={handleSwitchTab}
+                onClose={handleCloseTab}
+              />
+            ))}
+          </div>
+
+          {/* 新建会话按钮 - 点击显示 Agent 下拉选择 */}
+          <CreateConversationTrigger
+            disabled={isDropdownDisabled}
+            title={t('conversation.workspace.createNewConversation')}
+            menu={renderAgentDropdownMenu()}
+          />
+
+          {/* 左侧渐变指示器 */}
+          {showLeftFade && (
+            <div className='pointer-events-none absolute left-0 top-0 bottom-0 w-32px [background:linear-gradient(90deg,var(--bg-2)_0%,transparent_100%)]' />
+          )}
+
+          {/* 右侧渐变指示器 */}
+          {showRightFade && (
+            <div className='pointer-events-none absolute right-40px top-0 bottom-0 w-32px [background:linear-gradient(270deg,var(--bg-2)_0%,transparent_100%)]' />
+          )}
         </div>
-
-        {/* 新建会话按钮 - 点击显示 Agent 下拉选择 */}
-        <CreateConversationTrigger
-          disabled={isDropdownDisabled}
-          title={t('conversation.workspace.createNewConversation')}
-          menu={renderAgentDropdownMenu()}
-        />
-
-        {/* 左侧渐变指示器 */}
-        {showLeftFade && (
-          <div className='pointer-events-none absolute left-0 top-0 bottom-0 w-32px [background:linear-gradient(90deg,var(--bg-2)_0%,transparent_100%)]' />
-        )}
-
-        {/* 右侧渐变指示器 */}
-        {showRightFade && (
-          <div className='pointer-events-none absolute right-40px top-0 bottom-0 w-32px [background:linear-gradient(270deg,var(--bg-2)_0%,transparent_100%)]' />
-        )}
       </div>
-    </div>
+    </>
   );
 };
 
