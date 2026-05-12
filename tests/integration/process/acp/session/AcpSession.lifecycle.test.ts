@@ -102,6 +102,43 @@ describe('AcpSession lifecycle', () => {
     expect(client.createSession).toHaveBeenCalledOnce();
   });
 
+  it('falls back to model config option when setModel rejects', async () => {
+    (client.createSession as ReturnType<typeof vi.fn>).mockResolvedValue({
+      sessionId: 'sess-123',
+      models: {
+        currentModelId: 'claude-sonnet-4-6',
+        availableModels: [],
+      },
+      configOptions: [
+        {
+          id: 'model',
+          name: 'Model',
+          type: 'select',
+          category: 'model',
+          currentValue: 'claude-sonnet-4-6',
+          options: [
+            { id: 'claude-sonnet-4-6', name: 'Factory Sonnet' },
+            { id: 'custom:Claude-Sonnet-4.6-(Garza)-0', name: 'Garza Sonnet' },
+          ],
+        },
+      ],
+    });
+    (client.setModel as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('set_model invalid params'));
+
+    const session = new AcpSession(baseConfig, clientFactory, callbacks, {
+      initialDesired: { model: 'custom:Claude-Sonnet-4.6-(Garza)-0' },
+    });
+    session.start();
+    await vi.waitFor(() => expect(session.status).toBe('active'));
+
+    expect(client.setModel).toHaveBeenCalledWith('sess-123', 'custom:Claude-Sonnet-4.6-(Garza)-0');
+    expect(client.setConfigOption).toHaveBeenCalledWith('sess-123', 'model', 'custom:Claude-Sonnet-4.6-(Garza)-0');
+    expect(callbacks.onModelUpdate).toHaveBeenLastCalledWith({
+      currentModelId: 'custom:Claude-Sonnet-4.6-(Garza)-0',
+      availableModels: [],
+    });
+  });
+
   it('start() notifies sessionId via callback', async () => {
     const session = new AcpSession(baseConfig, clientFactory, callbacks);
     session.start();
