@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ReplicaAgent } from '../../../../src/process/agent/replica';
 import type { IResponseMessage } from '../../../../src/common/adapter/ipcBridge';
 
@@ -13,6 +13,12 @@ function createAgent(events: IResponseMessage[] = []): ReplicaAgent {
 }
 
 describe('ReplicaAgent event translation', () => {
+  afterEach(() => {
+    delete process.env.REPLICAS_API_KEY;
+    delete process.env.REPLICATE_API_TOKEN;
+    delete process.env.REPLICATE_API_KEY;
+  });
+
   it('emits Codex reasoning text from event_msg payloads', () => {
     const events: IResponseMessage[] = [];
     const agent = createAgent(events);
@@ -138,6 +144,34 @@ describe('ReplicaAgent event translation', () => {
       process.env.REPLICAS_ENVIRONMENT_ID = originalEnv.environmentId;
       process.env.REPLICAS_REPOSITORY_SET_ID = originalEnv.repositorySetId;
       process.env.REPLICAS_REPOSITORY_IDS = originalEnv.repositoryIds;
+    }
+  });
+
+  it('accepts Replicate API token aliases from the environment', async () => {
+    process.env.REPLICATE_API_TOKEN = 'replicate-token';
+    const originalFetch = globalThis.fetch;
+    let authHeader: string | null = null;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      authHeader = new Headers(init?.headers).get('authorization');
+      return new Response(JSON.stringify({ replica: { id: 'replica-1', name: 'test', status: 'preparing' } }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    try {
+      const agent = new ReplicaAgent({
+        id: 'conv-1',
+        workingDir: '/tmp',
+        onStreamEvent: () => {},
+        onSignalEvent: () => {},
+      });
+
+      await agent.sendMessage({ content: 'hello' });
+
+      expect(authHeader).toBe('Bearer replicate-token');
+    } finally {
+      globalThis.fetch = originalFetch;
     }
   });
 });

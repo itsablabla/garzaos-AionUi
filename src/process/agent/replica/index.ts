@@ -8,13 +8,14 @@ import type {
 } from './types';
 
 const DEFAULT_API_BASE_URL = 'https://api.tryreplicas.com';
+const REPLICA_API_KEY_ENV_KEYS = ['REPLICAS_API_KEY', 'REPLICATE_API_TOKEN', 'REPLICATE_API_KEY'] as const;
 
 export type { ReplicaAgentConfig } from './types';
 
 function requireApiKey(config: ReplicaAgentConfig): string {
-  const apiKey = config.apiKey || process.env.REPLICAS_API_KEY;
+  const apiKey = config.apiKey || REPLICA_API_KEY_ENV_KEYS.map((key) => process.env[key]?.trim()).find(Boolean);
   if (!apiKey) {
-    throw new Error('REPLICAS_API_KEY environment variable is not set');
+    throw new Error('REPLICAS_API_KEY, REPLICATE_API_TOKEN, or REPLICATE_API_KEY environment variable is not set');
   }
   return apiKey;
 }

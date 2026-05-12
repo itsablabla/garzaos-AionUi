@@ -988,6 +988,8 @@ export interface ICreateConversationParams {
     replicaId?: string;
     /** Existing Replicas chat ID for resume */
     chatId?: string;
+    /** Replicas API key override; prefer runtime env vars for secrets */
+    apiKey?: string;
     /** Replicas API base URL override */
     apiBaseUrl?: string;
     /** Replicas coding agent and model options */

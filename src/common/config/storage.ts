@@ -466,6 +466,7 @@ export type TChatConversation =
           environmentId?: string;
           repositorySetId?: string;
           repositoryIds?: string[];
+          apiKey?: string;
           apiBaseUrl?: string;
           model?: string;
           codingAgent?: 'claude' | 'codex';

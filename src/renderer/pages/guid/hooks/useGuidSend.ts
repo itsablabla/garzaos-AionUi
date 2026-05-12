@@ -424,7 +424,9 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       try {
         const conversation = await ipcBridge.conversation.create.invoke(replicaConversationParams);
         if (!conversation || !conversation.id) {
-          alert('Failed to create Replicas conversation. Please ensure REPLICAS_API_KEY is configured.');
+          alert(
+            'Failed to create Replicas conversation. Please ensure REPLICAS_API_KEY, REPLICATE_API_TOKEN, or REPLICATE_API_KEY is configured.'
+          );
           return;
         }
 
