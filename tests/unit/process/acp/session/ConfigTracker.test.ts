@@ -58,6 +58,38 @@ describe('ConfigTracker', () => {
     expect(ct.getPendingChanges().configOptions).toEqual([{ id: 'think', value: true }]);
   });
 
+  it('returns model config option id when desired model is exposed as a select option', () => {
+    const ct = new ConfigTracker();
+    ct.syncFromSessionResult({
+      configOptions: [
+        {
+          id: 'model',
+          name: 'Model',
+          type: 'select',
+          category: 'model',
+          currentValue: 'claude-sonnet-4-6',
+          options: [
+            { id: 'claude-sonnet-4-6', name: 'Factory Sonnet' },
+            { id: 'custom:Claude-Sonnet-4.6-(Garza)-0', name: 'Garza Sonnet' },
+          ],
+        },
+      ],
+      cwd: '/tmp',
+    });
+
+    expect(ct.getModelConfigOptionId('custom:Claude-Sonnet-4.6-(Garza)-0')).toBe('model');
+  });
+
+  it('returns null when model select option is not available', () => {
+    const ct = new ConfigTracker();
+    ct.syncFromSessionResult({
+      configOptions: [{ id: 'mode', name: 'Mode', type: 'select', category: 'mode', currentValue: 'default' }],
+      cwd: '/tmp',
+    });
+
+    expect(ct.getModelConfigOptionId('custom:Claude-Sonnet-4.6-(Garza)-0')).toBeNull();
+  });
+
   it('clearPending removes all desired values', () => {
     const ct = new ConfigTracker();
     ct.setDesiredModel('gpt-4');
