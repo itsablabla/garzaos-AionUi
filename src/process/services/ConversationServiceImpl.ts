@@ -42,9 +42,20 @@ export class ConversationServiceImpl implements IConversationService {
     } as TChatConversation;
   }
 
+  private async repairLegacyReplicaConversation(conversation: TChatConversation): Promise<TChatConversation> {
+    const normalized = this.normalizeLegacyReplicaConversation(conversation);
+    if (normalized !== conversation) {
+      await this.repo.updateConversation(conversation.id, {
+        type: 'replica',
+        extra: normalized.extra,
+      } as Partial<TChatConversation>);
+    }
+    return normalized;
+  }
+
   async getConversation(id: string): Promise<TChatConversation | undefined> {
     const conversation = await this.repo.getConversation(id);
-    return conversation ? this.normalizeLegacyReplicaConversation(conversation) : undefined;
+    return conversation ? this.repairLegacyReplicaConversation(conversation) : undefined;
   }
 
   async listAllConversations(): Promise<TChatConversation[]> {

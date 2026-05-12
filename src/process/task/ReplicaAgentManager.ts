@@ -22,6 +22,8 @@ export interface ReplicaAgentManagerData {
   replicaId?: string;
   chatId?: string;
   environmentId?: string;
+  repositorySetId?: string;
+  repositoryIds?: string[];
   model?: string;
   codingAgent?: 'claude' | 'codex';
   thinkingLevel?: 'low' | 'medium' | 'high' | 'max';
@@ -54,6 +56,8 @@ class ReplicaAgentManager extends BaseAgentManager<ReplicaAgentManagerData> {
       replicaId: data.replicaId,
       chatId: data.chatId,
       environmentId: data.environmentId,
+      repositorySetId: data.repositorySetId,
+      repositoryIds: data.repositoryIds,
       model,
       codingAgent: data.codingAgent || resolveReplicaCodingAgent(model),
       thinkingLevel: data.thinkingLevel,

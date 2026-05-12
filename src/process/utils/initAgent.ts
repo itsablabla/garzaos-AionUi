@@ -365,6 +365,12 @@ export const createReplicaAgent = async (options: ICreateConversationParams): Pr
       replicaId: extra.replicaId,
       chatId: extra.chatId,
       environmentId: extra.environmentId || process.env.REPLICAS_ENVIRONMENT_ID,
+      repositorySetId: extra.repositorySetId || process.env.REPLICAS_REPOSITORY_SET_ID,
+      repositoryIds:
+        extra.repositoryIds ||
+        process.env.REPLICAS_REPOSITORY_IDS?.split(',')
+          .map((id) => id.trim())
+          .filter(Boolean),
       apiBaseUrl: extra.apiBaseUrl,
       model: extra.currentModelId,
       codingAgent: extra.codingAgent,

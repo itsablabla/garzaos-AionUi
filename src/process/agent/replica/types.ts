@@ -12,6 +12,8 @@ export type ReplicaAgentConfig = {
   replicaId?: string;
   chatId?: string;
   environmentId?: string;
+  repositorySetId?: string;
+  repositoryIds?: string[];
   model?: string;
   codingAgent?: ReplicaCodingAgent;
   thinkingLevel?: ReplicaThinkingLevel;

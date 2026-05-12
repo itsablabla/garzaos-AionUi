@@ -116,12 +116,21 @@ export class ReplicaAgent {
 
   private async createReplica(message: string): Promise<void> {
     const name = `aionui-${Date.now()}`;
+    const environmentId = this.config.environmentId || process.env.REPLICAS_ENVIRONMENT_ID;
+    const repositorySetId = this.config.repositorySetId || process.env.REPLICAS_REPOSITORY_SET_ID;
+    const repositoryIds =
+      this.config.repositoryIds ||
+      process.env.REPLICAS_REPOSITORY_IDS?.split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
     const response = await this.request<CreateReplicaResponse>('/v1/replica', {
       method: 'POST',
       body: JSON.stringify({
         name,
         message,
-        ...(this.config.environmentId && { environment_id: this.config.environmentId }),
+        ...(environmentId && { environment_id: environmentId }),
+        ...(repositorySetId && { repository_set_id: repositorySetId }),
+        ...(repositoryIds && repositoryIds.length > 0 && { repository_ids: repositoryIds }),
         ...(this.config.codingAgent && { coding_agent: this.config.codingAgent }),
         ...(this.config.model && { model: this.config.model }),
         ...(this.config.thinkingLevel && { thinking_level: this.config.thinkingLevel }),

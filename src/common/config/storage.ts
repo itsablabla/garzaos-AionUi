@@ -454,6 +454,8 @@ export type TChatConversation =
           replicaId?: string;
           chatId?: string;
           environmentId?: string;
+          repositorySetId?: string;
+          repositoryIds?: string[];
           apiBaseUrl?: string;
           model?: string;
           codingAgent?: 'claude' | 'codex';

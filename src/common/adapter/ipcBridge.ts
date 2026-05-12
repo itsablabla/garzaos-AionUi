@@ -976,6 +976,10 @@ export interface ICreateConversationParams {
     remoteAgentId?: string;
     /** Replicas environment ID used when creating a new replica workspace */
     environmentId?: string;
+    /** Deprecated Replicas repository set fallback when no environment ID is configured */
+    repositorySetId?: string;
+    /** Deprecated Replicas repository IDs fallback when no environment ID is configured */
+    repositoryIds?: string[];
     /** Existing Replicas workspace ID for resume */
     replicaId?: string;
     /** Existing Replicas chat ID for resume */

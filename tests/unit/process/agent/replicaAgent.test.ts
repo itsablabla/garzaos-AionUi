@@ -94,4 +94,50 @@ describe('ReplicaAgent event translation', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('uses Replicas environment configuration when creating a replica', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalEnv = {
+      environmentId: process.env.REPLICAS_ENVIRONMENT_ID,
+      repositorySetId: process.env.REPLICAS_REPOSITORY_SET_ID,
+      repositoryIds: process.env.REPLICAS_REPOSITORY_IDS,
+    };
+    let requestBody: Record<string, unknown> | undefined;
+    process.env.REPLICAS_ENVIRONMENT_ID = 'env-1';
+    process.env.REPLICAS_REPOSITORY_SET_ID = 'repo-set-1';
+    process.env.REPLICAS_REPOSITORY_IDS = 'repo-1, repo-2';
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/v1/replica')) {
+        requestBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      }
+      return new Response(JSON.stringify({ replica: { id: 'replica-1', name: 'test', status: 'preparing' } }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    try {
+      const agent = new ReplicaAgent({
+        id: 'conv-1',
+        workingDir: '/tmp',
+        apiKey: 'test-key',
+        onStreamEvent: () => {},
+        onSignalEvent: () => {},
+      });
+
+      await agent.sendMessage({ content: 'hello' });
+
+      expect(requestBody).toMatchObject({
+        environment_id: 'env-1',
+        repository_set_id: 'repo-set-1',
+        repository_ids: ['repo-1', 'repo-2'],
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      process.env.REPLICAS_ENVIRONMENT_ID = originalEnv.environmentId;
+      process.env.REPLICAS_REPOSITORY_SET_ID = originalEnv.repositorySetId;
+      process.env.REPLICAS_REPOSITORY_IDS = originalEnv.repositoryIds;
+    }
+  });
 });
