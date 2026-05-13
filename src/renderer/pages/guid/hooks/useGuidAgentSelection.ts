@@ -6,6 +6,7 @@
 
 import { ipcBridge } from '@/common';
 import { DEFAULT_CODEX_MODELS } from '@/common/types/codex/codexModels';
+import { DROID_BACKEND } from '@/common/types/droidDefaults';
 import type { IProvider } from '@/common/config/storage';
 import { ConfigStorage } from '@/common/config/storage';
 import type { AcpBackendAll, AcpSessionConfigOption } from '@/common/types/acpTypes';
@@ -235,7 +236,9 @@ export const useGuidAgentSelection = ({
 
     if (resetAssistant && !resetHandledRef.current) {
       resetHandledRef.current = true;
-      const firstCliAgent = availableAgents.find((a) => !a.isPreset);
+      const firstCliAgent =
+        availableAgents.find((a) => !a.isPreset && getAgentKey(a) === DROID_BACKEND) ??
+        availableAgents.find((a) => !a.isPreset);
       const fallbackKey = firstCliAgent ? getAgentKey(firstCliAgent) : 'aionrs';
       _setSelectedAgentKey(fallbackKey);
       ConfigStorage.set('guid.lastSelectedAgent', fallbackKey).catch((error) => {
@@ -271,7 +274,7 @@ export const useGuidAgentSelection = ({
         }
 
         // No saved preference or stale key — default to first detected engine
-        const firstAgent = availableAgents[0];
+        const firstAgent = availableAgents.find((agent) => getAgentKey(agent) === DROID_BACKEND) ?? availableAgents[0];
         if (firstAgent) {
           _setSelectedAgentKey(getAgentKey(firstAgent));
         }
@@ -473,7 +476,9 @@ export const useGuidAgentSelection = ({
 
   // Key of the first non-preset CLI agent (used as fallback when leaving preset mode)
   const defaultAgentKey = useMemo(() => {
-    const firstCliAgent = availableAgents?.find((a) => !a.isPreset);
+    const firstCliAgent =
+      availableAgents?.find((a) => !a.isPreset && getAgentKey(a) === DROID_BACKEND) ??
+      availableAgents?.find((a) => !a.isPreset);
     return firstCliAgent ? getAgentKey(firstCliAgent) : 'aionrs';
   }, [availableAgents]);
 

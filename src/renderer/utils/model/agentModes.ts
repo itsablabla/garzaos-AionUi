@@ -9,6 +9,7 @@ import {
   CODEX_MODE_FULL_AUTO,
   CODEX_MODE_FULL_AUTO_NO_SANDBOX,
 } from '@/common/types/codex/codexModes';
+import { DROID_BACKEND, DROID_FULL_AUTO_MODE } from '@/common/types/droidDefaults';
 
 /**
  * Agent mode option interface
@@ -81,6 +82,12 @@ export const AGENT_MODES: Record<string, AgentModeOption[]> = {
   snow: [
     { value: 'default', label: 'Agent', description: 'Full agent mode with tool access' },
     { value: 'yolo', label: 'YOLO', description: 'Auto-approve all operations without prompting' },
+  ],
+  [DROID_BACKEND]: [
+    { value: 'default', label: 'Default' },
+    { value: 'auto-low', label: 'Auto Low' },
+    { value: 'auto-medium', label: 'Auto Medium' },
+    { value: DROID_FULL_AUTO_MODE, label: 'Full Auto' },
   ],
 };
 

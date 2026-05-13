@@ -121,6 +121,8 @@ export interface IConfigStorageRefer {
   'migration.assistantsSplitCustom'?: boolean;
   /** Migration flag: Electron desktop config has been imported to server config */
   'migration.electronConfigImported'?: boolean;
+  /** Migration flag: Garza fork defaults Droid to Garza Sonnet + full auto */
+  'migration.garzaDroidDefaults_v1'?: boolean;
   // 关闭窗口时最小化到系统托盘 / Minimize to system tray when closing window
   'system.closeToTray'?: boolean;
   // 任务完成时显示系统通知 / Show system notification when task completes

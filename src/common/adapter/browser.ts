@@ -16,6 +16,21 @@ interface CustomWindow extends Window {
 }
 
 const win = window as CustomWindow;
+const POST_LOGIN_REDIRECT_STORAGE_KEY = 'aionui-post-login-redirect';
+
+const isLoginHashRoute = (): boolean => {
+  const route = window.location.hash.replace(/^#/, '');
+  return route === '/login' || route.startsWith('/login?') || route.startsWith('/login/');
+};
+
+const rememberCurrentRouteForLogin = (): void => {
+  if (isLoginHashRoute()) return;
+
+  const route = window.location.hash.replace(/^#/, '');
+  if (route.startsWith('/')) {
+    window.sessionStorage.setItem(POST_LOGIN_REDIRECT_STORAGE_KEY, route);
+  }
+};
 
 /**
  * 适配electron的API到浏览器中,建立renderer和main的通信桥梁, 与preload.ts中的注入对应
@@ -145,10 +160,11 @@ if (win.electronAPI) {
 
           // 已在登录页则不再重定向，防止无限刷新循环
           // Skip redirect if already on login page to prevent infinite reload loop
-          if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
+          if (window.location.pathname === '/login' || isLoginHashRoute()) {
             return;
           }
 
+          rememberCurrentRouteForLogin();
           // 短暂延迟后跳转到登录页，以便显示 UI 反馈
           // Redirect to login page after a short delay to show any UI feedback
           // Use hash navigation to stay within the SPA (HashRouter), avoiding a full
@@ -187,9 +203,10 @@ if (win.electronAPI) {
         }
         // 已在登录页则不再重定向，防止无限刷新循环
         // Skip redirect if already on login page to prevent infinite reload loop
-        if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
+        if (window.location.pathname === '/login' || isLoginHashRoute()) {
           return;
         }
+        rememberCurrentRouteForLogin();
         // Use hash navigation to stay within the SPA (HashRouter)
         setTimeout(() => {
           window.location.hash = '/login';

@@ -4,6 +4,10 @@ import { CSRF_COOKIE_NAME } from '@process/webserver/config/constants';
 
 type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
 
+type WebSocketReconnectWindow = Window & {
+  __websocketReconnect?: () => void;
+};
+
 export interface AuthUser {
   id: string;
   username: string;
@@ -13,6 +17,7 @@ interface LoginParams {
   username: string;
   password: string;
   remember?: boolean;
+  redirectTo?: string;
 }
 
 type LoginErrorCode =
@@ -43,8 +48,44 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const AUTH_USER_ENDPOINT = '/api/auth/user';
+const POST_LOGIN_REDIRECT_STORAGE_KEY = 'aionui-post-login-redirect';
 
 const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
+
+function getCurrentHashRoute(): string {
+  if (typeof window === 'undefined') return '/guid';
+  const hashRoute = window.location.hash.replace(/^#/, '');
+  return hashRoute.startsWith('/') ? hashRoute : '/guid';
+}
+
+function isLoginRoute(route: string): boolean {
+  return route === '/login' || route.startsWith('/login?') || route.startsWith('/login/');
+}
+
+function getStoredPostLoginRedirect(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const storedRoute = window.sessionStorage.getItem(POST_LOGIN_REDIRECT_STORAGE_KEY);
+  if (!storedRoute || isLoginRoute(storedRoute)) return null;
+
+  return storedRoute.startsWith('/') ? storedRoute : null;
+}
+
+function clearStoredPostLoginRedirect(): void {
+  if (typeof window === 'undefined') return;
+
+  window.sessionStorage.removeItem(POST_LOGIN_REDIRECT_STORAGE_KEY);
+}
+
+export function getPostLoginRedirect(fallback = '/guid'): string {
+  return getStoredPostLoginRedirect() ?? fallback;
+}
+
+export function storePostLoginRedirect(route = getCurrentHashRoute()): void {
+  if (typeof window === 'undefined' || isLoginRoute(route)) return;
+
+  window.sessionStorage.setItem(POST_LOGIN_REDIRECT_STORAGE_KEY, route);
+}
 
 // Clear expired auth cache including cookies and localStorage
 // 清除过期的认证缓存，包括 Cookie 和 localStorage
@@ -136,7 +177,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     };
   }, [refresh]);
 
-  const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
+  const login = useCallback(async ({ username, password, remember, redirectTo }: LoginParams): Promise<LoginResult> => {
     try {
       if (isDesktopRuntime) {
         setReady(true);
@@ -207,13 +248,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setUser(data.user);
       setStatus('authenticated');
       setReady(true);
+      const nextRoute = redirectTo ?? getPostLoginRedirect();
+      clearStoredPostLoginRedirect();
 
       // Re-enable WebSocket reconnection after successful login (WebUI mode only)
-      if (typeof window !== 'undefined' && (window as any).__websocketReconnect) {
-        (window as any).__websocketReconnect();
+      const websocketReconnect = typeof window === 'undefined' ? undefined : (window as WebSocketReconnectWindow).__websocketReconnect;
+      if (websocketReconnect) {
+        websocketReconnect();
       }
 
-      return { success: true };
+      return { success: true, message: nextRoute };
     } catch (error) {
       console.error('Login request failed:', error);
 

@@ -9,6 +9,7 @@ import type { ICreateConversationParams } from '@/common/adapter/ipcBridge';
 import type { TProviderWithModel } from '@/common/config/storage';
 import type { AcpBackend } from '@/common/types/acpTypes';
 import { DEFAULT_CODEX_MODELS } from '@/common/types/codex/codexModels';
+import { DROID_BACKEND, DROID_FULL_AUTO_MODE, DROID_GARZA_SONNET_MODEL_ID } from '@/common/types/droidDefaults';
 import { resolveLocaleKey } from '@/common/utils';
 import { loadPresetAssistantResources } from '@/common/utils/presetAssistantResources';
 import {
@@ -56,6 +57,10 @@ async function resolvePreferredMode(backend: string): Promise<string | undefined
     return legacyMode;
   }
 
+  if (backend === DROID_BACKEND && modeOptions.some((option) => option.value === DROID_FULL_AUTO_MODE)) {
+    return DROID_FULL_AUTO_MODE;
+  }
+
   return undefined;
 }
 
@@ -75,6 +80,10 @@ async function resolvePreferredAcpModelId(backend: string): Promise<string | und
 
   if (backend === 'codex' && DEFAULT_CODEX_MODELS.length > 0) {
     return DEFAULT_CODEX_MODELS[0]?.id;
+  }
+
+  if (backend === DROID_BACKEND) {
+    return DROID_GARZA_SONNET_MODEL_ID;
   }
 
   return undefined;

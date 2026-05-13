@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
-import { useAuth } from '@renderer/hooks/context/AuthContext';
+import { storePostLoginRedirect, useAuth } from '@renderer/hooks/context/AuthContext';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 const Conversation = React.lazy(() => import('@renderer/pages/conversation'));
 const Guid = React.lazy(() => import('@renderer/pages/guid'));
@@ -36,6 +36,7 @@ const ProtectedLayout: React.FC<{ layout: React.ReactElement }> = ({ layout }) =
   }
 
   if (status !== 'authenticated') {
+    storePostLoginRedirect();
     return <Navigate to='/login' replace />;
   }
 
