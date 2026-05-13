@@ -278,6 +278,7 @@ const GeminiSendBox: React.FC<{
               throw new Error(maybeError.message || 'Failed to send message to team');
             }
           }
+          setWaitingResponse(false);
         } else {
           const result = await ipcBridge.geminiConversation.sendMessage.invoke({
             input: displayMessage,
@@ -337,13 +338,7 @@ const GeminiSendBox: React.FC<{
     clearFiles();
     emitter.emit('gemini.selected.file.clear');
 
-    if (
-      shouldEnqueueConversationCommand({
-        enabled: true,
-        isBusy,
-        hasPendingCommands,
-      })
-    ) {
+    if (!teamId && shouldEnqueueConversationCommand({ enabled: true, isBusy, hasPendingCommands })) {
       enqueue({ input: message, files: filesToSend });
       return;
     }

@@ -1,0 +1,567 @@
+#!/usr/bin/env python3
+"""
+Manage AionUI conversations through the local WebSocket endpoint.
+"""
+
+from __future__ import annotations
+
+import argparse
+import io
+import json
+import os
+import sys
+import time
+import uuid
+from typing import Any, Dict, Iterable, Optional
+
+
+DEFAULT_WS_URL = "ws://localhost:25808/"
+DEFAULT_TIMEOUT = 30
+DEFAULT_CONVERSATION_NAME = "New Session"
+DEFAULT_SESSION_MODE = "default"
+COOKIE_BASE = "multica_logged_in=1; sidebar_state=true"
+COOKIE_FILE = os.path.join(os.path.expanduser("~"), ".aionui_cookies.json")
+JSONDict = Dict[str, Any]
+
+
+def _load_saved_cookies() -> tuple[Optional[str], Optional[str]]:
+    """Load session_token and csrf_token from the local cookie file if it exists."""
+    if not os.path.exists(COOKIE_FILE):
+        return None, None
+    try:
+        with open(COOKIE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("session_token"), data.get("csrf_token")
+    except Exception:
+        return None, None
+
+
+def _save_cookies(session_token: str, csrf_token: str) -> None:
+    """Persist tokens to the local cookie file."""
+    with open(COOKIE_FILE, "w", encoding="utf-8") as f:
+        json.dump({"session_token": session_token, "csrf_token": csrf_token}, f, indent=2)
+
+
+def _clear_cookies() -> None:
+    """Remove the local cookie file."""
+    if os.path.exists(COOKIE_FILE):
+        os.remove(COOKIE_FILE)
+
+
+def _configure_stdio() -> None:
+    if sys.platform != "win32":
+        return
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    if hasattr(sys.stderr, "buffer"):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
+
+class AionUIError(RuntimeError):
+    """Raised when an AionUI WebSocket operation fails."""
+
+
+def _read_json_file(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def extract_conversation_id(payload: Any, expected_name: Optional[str] = None) -> Optional[str]:
+    """
+    Best-effort extraction of a conversation id from callback payloads.
+
+    The exact callback shape may differ across AionUI builds, so search common
+    field names recursively and prefer objects that look like conversation data.
+    """
+
+    visited: set[int] = set()
+
+    def _looks_like_conversation(node: JSONDict) -> bool:
+        if expected_name and node.get("name") == expected_name:
+            return True
+        conversation_markers = {
+            "name",
+            "type",
+            "workspace",
+            "extra",
+            "conversation_id",
+            "conversationId",
+        }
+        return bool(conversation_markers.intersection(node.keys()))
+
+    def _search(node: Any) -> Optional[str]:
+        node_id = id(node)
+        if node_id in visited:
+            return None
+        visited.add(node_id)
+
+        if isinstance(node, dict):
+            for key in ("conversation_id", "conversationId"):
+                value = node.get(key)
+                if isinstance(value, str) and value:
+                    return value
+
+            raw_id = node.get("id")
+            if isinstance(raw_id, str) and raw_id and _looks_like_conversation(node):
+                return raw_id
+
+            for value in node.values():
+                found = _search(value)
+                if found:
+                    return found
+
+        if isinstance(node, list):
+            for item in node:
+                found = _search(item)
+                if found:
+                    return found
+
+        return None
+
+    return _search(payload)
+
+
+class AionUISessionManager:
+    def __init__(
+        self,
+        ws_url: str = DEFAULT_WS_URL,
+        timeout: int = DEFAULT_TIMEOUT,
+        session_token: Optional[str] = None,
+        csrf_token: Optional[str] = None,
+    ) -> None:
+        self.ws_url = ws_url
+        self.timeout = timeout
+        self.session_token = session_token
+        self.csrf_token = csrf_token
+        self.ws = None
+
+    def connect(self) -> None:
+        try:
+            from websocket import create_connection
+        except ImportError as exc:
+            raise AionUIError(
+                "Missing dependency 'websocket-client'. Install it or run with "
+                "'uv run --with websocket-client ...'."
+            ) from exc
+
+        cookie = self._build_cookie_header()
+        if not self.session_token or not self.csrf_token:
+            _emit_json(
+                {
+                    "warning": (
+                        f"No auth tokens found (checked CLI args, env vars, and {COOKIE_FILE}). "
+                        "Connection may be rejected with 401. "
+                        "Run: aionui_session.py save-cookies --session-token TOKEN --csrf-token TOKEN "
+                        "to persist tokens for future use."
+                    )
+                },
+                stream=sys.stderr,
+            )
+
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko)"
+            ),
+            "Origin": "http://localhost:25808",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "Cookie": cookie,
+        }
+
+        try:
+            self.ws = create_connection(
+                self.ws_url,
+                timeout=self.timeout,
+                ping_interval=30,
+                ping_timeout=10,
+                header=headers,
+            )
+        except Exception as exc:
+            err_str = str(exc).lower()
+            if "401" in err_str or "403" in err_str or "handshake" in err_str or "status" in err_str:
+                raise AionUIError(
+                    f"Failed to connect to {self.ws_url}: {exc}\n"
+                    "Hint: AionUI requires authentication. Provide --session-token and "
+                    "--csrf-token (or set AIONUI_SESSION_TOKEN / AIONUI_CSRF_TOKEN). "
+                    "Retrieve these from your browser's DevTools → Application → Cookies."
+                ) from exc
+            raise AionUIError(f"Failed to connect to {self.ws_url}: {exc}") from exc
+
+    def disconnect(self) -> None:
+        if self.ws is not None:
+            try:
+                self.ws.close()
+            finally:
+                self.ws = None
+
+    def list_conversations(self, page: int = 0, page_size: int = 10000) -> JSONDict:
+        request_id = self._generate_id("database.get-user-conversations")
+        payload = {"page": page, "pageSize": page_size}
+        return self._send_request("subscribe-database.get-user-conversations", request_id, payload)
+
+    def create_conversation(
+        self,
+        name: str,
+        conv_type: str = "acp",
+        backend: str = "claude",
+        workspace: str = "",
+        session_mode: str = DEFAULT_SESSION_MODE,
+        model: Optional[JSONDict] = None,
+        org_workspace_id: Optional[str] = None,
+        org_project_id: Optional[str] = None,
+    ) -> JSONDict:
+        request_id = self._generate_id("create-conversation")
+
+        org_extra = self._build_org_extra(org_workspace_id, org_project_id)
+
+        if conv_type == "acp":
+            payload: JSONDict = {
+                "type": "acp",
+                "name": name,
+                "extra": {
+                    "workspace": workspace,
+                    "customWorkspace": bool(workspace),
+                    "defaultFiles": [],
+                    "backend": backend,
+                    "agentName": self._get_agent_name(backend),
+                    "cliPath": backend,
+                    "sessionMode": session_mode,
+                    **org_extra,
+                },
+            }
+        elif conv_type == "aionrs":
+            if not model:
+                raise AionUIError("Model configuration is required for aionrs conversations.")
+            payload = {
+                "type": "aionrs",
+                "name": name,
+                "model": model,
+                "extra": {
+                    "workspace": workspace,
+                    "customWorkspace": bool(workspace),
+                    "defaultFiles": [],
+                    "sessionMode": session_mode,
+                    **org_extra,
+                },
+            }
+        else:
+            raise AionUIError(f"Unknown conversation type: {conv_type}")
+
+        return self._send_request("subscribe-create-conversation", request_id, payload)
+
+    def send_message(
+        self,
+        conversation_id: str,
+        message: str,
+        files: Optional[list[Any]] = None,
+    ) -> JSONDict:
+        """Send a message to a conversation (fire-and-forget).
+
+        AionUI processes messages asynchronously and does not send a callback
+        after dispatch, so we only confirm the WebSocket send succeeded.
+        """
+        if self.ws is None:
+            raise AionUIError("WebSocket is not connected.")
+
+        request_id = self._generate_id("chat.send.message")
+        payload = {
+            "input": message,
+            "msg_id": uuid.uuid4().hex[:8],
+            "conversation_id": conversation_id,
+            "files": files or [],
+        }
+        request = {
+            "name": "subscribe-chat.send.message",
+            "data": {"id": request_id, "data": payload},
+        }
+        try:
+            self.ws.send(json.dumps(request))
+        except Exception as exc:
+            raise AionUIError(f"Failed to send message: {exc}") from exc
+
+        # Best-effort liveness check: try to read any pending frame for up to 1 s.
+        # A clean connection will either return a frame or time out — both are fine.
+        # An error here means the connection dropped before/during the send.
+        try:
+            self.ws.settimeout(1)
+            self.ws.recv()
+        except Exception as exc:
+            if "timed out" not in str(exc).lower():
+                raise AionUIError(
+                    f"Message may not have been delivered — connection error after send: {exc}"
+                ) from exc
+
+        return {"status": "dispatched", "conversation_id": conversation_id, "request_id": request_id}
+
+    def delete_conversation(self, conversation_id: str) -> JSONDict:
+        request_id = self._generate_id("remove-conversation")
+        return self._send_request(
+            "subscribe-remove-conversation",
+            request_id,
+            {"id": conversation_id},
+        )
+
+    def _build_cookie_header(self) -> str:
+        cookie_parts = [COOKIE_BASE]
+        if self.session_token:
+            cookie_parts.append(f"aionui-session={self.session_token}")
+        if self.csrf_token:
+            cookie_parts.append(f"csrfToken={self.csrf_token}")
+        return "; ".join(cookie_parts)
+
+    def _generate_id(self, prefix: str) -> str:
+        return f"{prefix}{uuid.uuid4().hex[:8]}"
+
+    def _send_request(self, name: str, request_id: str, data: JSONDict) -> JSONDict:
+        if self.ws is None:
+            raise AionUIError("WebSocket is not connected.")
+
+        request = {"name": name, "data": {"id": request_id, "data": data}}
+        expected_callback = f"subscribe.callback-{name.replace('subscribe-', '')}{request_id}"
+        started = time.time()
+
+        try:
+            self.ws.send(json.dumps(request))
+        except Exception as exc:
+            raise AionUIError(f"Failed to send request '{name}': {exc}") from exc
+
+        while time.time() - started < self.timeout:
+            try:
+                self.ws.settimeout(1)
+                raw_message = self.ws.recv()
+            except Exception as exc:
+                if "timed out" in str(exc).lower():
+                    continue
+                raise AionUIError(f"Error receiving response for '{name}': {exc}") from exc
+
+            if not raw_message:
+                continue
+
+            try:
+                decoded = json.loads(raw_message)
+            except json.JSONDecodeError:
+                continue
+
+            if decoded.get("name") == expected_callback:
+                payload = decoded.get("data", decoded)
+                if isinstance(payload, dict):
+                    return payload
+                return {"data": payload}
+
+        raise AionUIError(
+            f"Timed out after {self.timeout}s waiting for callback '{expected_callback}'."
+        )
+
+    @staticmethod
+    def _build_org_extra(org_workspace_id: Optional[str], org_project_id: Optional[str]) -> JSONDict:
+        extra: JSONDict = {}
+        if org_workspace_id:
+            extra["workspace_id"] = org_workspace_id
+        if org_project_id:
+            extra["project_id"] = org_project_id
+        return extra
+
+    @staticmethod
+    def _get_agent_name(backend: str) -> str:
+        mapping = {
+            "claude": "Claude Code",
+            "codex": "Codex",
+            "gemini": "Gemini",
+            "opencode": "OpenCode",
+        }
+        return mapping.get(backend, backend)
+
+
+def _emit_json(payload: Any, stream: Any = None) -> None:
+    stream = sys.stdout if stream is None else stream
+    stream.write(json.dumps(payload, ensure_ascii=False, indent=2))
+    stream.write("\n")
+
+
+def _normalize_files_arg(files_json: Optional[str], files_file: Optional[str]) -> list[Any]:
+    if files_json and files_file:
+        raise AionUIError("Use only one of --files-json or --files-file.")
+    if files_json:
+        try:
+            value = json.loads(files_json)
+        except json.JSONDecodeError as exc:
+            raise AionUIError(f"Invalid JSON passed to --files-json: {exc}") from exc
+        if not isinstance(value, list):
+            raise AionUIError("--files-json must decode to a JSON array.")
+        return value
+    if files_file:
+        value = _read_json_file(files_file)
+        if not isinstance(value, list):
+            raise AionUIError("--files-file must contain a JSON array.")
+        return value
+    return []
+
+
+def _load_model(model_json: Optional[str], model_file: Optional[str]) -> Optional[JSONDict]:
+    if model_json and model_file:
+        raise AionUIError("Use only one of --model or --model-file.")
+    if model_json:
+        try:
+            value = json.loads(model_json)
+        except json.JSONDecodeError as exc:
+            raise AionUIError(f"Invalid JSON passed to --model: {exc}") from exc
+        if not isinstance(value, dict):
+            raise AionUIError("--model must decode to a JSON object.")
+        return value
+    if model_file:
+        value = _read_json_file(model_file)
+        if not isinstance(value, dict):
+            raise AionUIError("--model-file must contain a JSON object.")
+        return value
+    return None
+
+
+def _manager_from_args(args: argparse.Namespace) -> AionUISessionManager:
+    session_token = args.session_token
+    csrf_token = args.csrf_token
+
+    # Fall back to saved cookies when tokens are not provided on the CLI / env
+    if not session_token or not csrf_token:
+        saved_session, saved_csrf = _load_saved_cookies()
+        if saved_session and not session_token:
+            session_token = saved_session
+        if saved_csrf and not csrf_token:
+            csrf_token = saved_csrf
+
+    return AionUISessionManager(
+        ws_url=args.ws_url,
+        timeout=args.timeout,
+        session_token=session_token,
+        csrf_token=csrf_token,
+    )
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="AionUI session manager")
+    parser.add_argument("action", choices=["create", "delete", "list", "send", "save-cookies", "clear-cookies"])
+    parser.add_argument(
+        "--ws-url",
+        default=os.getenv("AIONUI_WS_URL", DEFAULT_WS_URL),
+        help=f"WebSocket URL (default: {DEFAULT_WS_URL})",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=int(os.getenv("AIONUI_TIMEOUT", str(DEFAULT_TIMEOUT))),
+        help=f"Timeout in seconds (default: {DEFAULT_TIMEOUT})",
+    )
+    parser.add_argument(
+        "--session-token",
+        default=os.getenv("AIONUI_SESSION_TOKEN"),
+        help="AionUI session JWT token",
+    )
+    parser.add_argument(
+        "--csrf-token",
+        default=os.getenv("AIONUI_CSRF_TOKEN"),
+        help="CSRF token",
+    )
+
+    parser.add_argument(
+        "--name",
+        default=DEFAULT_CONVERSATION_NAME,
+        help=f"Conversation name (default: {DEFAULT_CONVERSATION_NAME})",
+    )
+    parser.add_argument("--type", choices=["acp", "aionrs"], default="acp")
+    parser.add_argument(
+        "--backend",
+        choices=["claude", "codex", "gemini", "opencode"],
+        default="claude",
+    )
+    parser.add_argument("--workspace", default="", help="Workspace path")
+    parser.add_argument("--org-workspace-id", help="AionUI org workspace id stored in conversation.extra.workspace_id")
+    parser.add_argument("--org-project-id", help="AionUI org project id stored in conversation.extra.project_id")
+    parser.add_argument(
+        "--session-mode",
+        choices=["default", "bypassPermissions", "yolo"],
+        default=DEFAULT_SESSION_MODE,
+    )
+    parser.add_argument("--model", help="Inline JSON string for aionrs model config")
+    parser.add_argument("--model-file", help="Path to a JSON file for aionrs model config")
+
+    parser.add_argument("--id", help="Conversation ID for delete/send")
+    parser.add_argument("--message", help="Message content for send")
+    parser.add_argument("--files-json", help="JSON array of files for send")
+    parser.add_argument("--files-file", help="Path to a JSON file containing files for send")
+    parser.add_argument("--page", type=int, default=0, help="List page number")
+    parser.add_argument("--page-size", type=int, default=10000, help="List page size")
+    return parser
+
+
+def main(argv: Optional[Iterable[str]] = None) -> int:
+    _configure_stdio()
+    parser = _build_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
+
+    manager = _manager_from_args(args)
+
+    # Cookie management actions — no WebSocket needed
+    if args.action == "save-cookies":
+        if not args.session_token or not args.csrf_token:
+            raise SystemExit(
+                _emit_json({"error": "--session-token and --csrf-token are required for save-cookies."}, stream=sys.stderr) or 1
+            )
+        _save_cookies(args.session_token, args.csrf_token)
+        _emit_json({"status": "saved", "path": COOKIE_FILE})
+        return 0
+
+    if args.action == "clear-cookies":
+        _clear_cookies()
+        _emit_json({"status": "cleared", "path": COOKIE_FILE})
+        return 0
+
+    try:
+        manager.connect()
+
+        if args.action == "create":
+            model = _load_model(args.model, args.model_file)
+            result = manager.create_conversation(
+                name=args.name,
+                conv_type=args.type,
+                backend=args.backend,
+                workspace=args.workspace,
+                session_mode=args.session_mode,
+                model=model,
+                org_workspace_id=args.org_workspace_id,
+                org_project_id=args.org_project_id,
+            )
+            _emit_json(result)
+            return 0
+
+        if args.action == "list":
+            result = manager.list_conversations(page=args.page, page_size=args.page_size)
+            _emit_json(result)
+            return 0
+
+        if args.action == "delete":
+            if not args.id:
+                raise AionUIError("--id is required for delete.")
+            result = manager.delete_conversation(args.id)
+            _emit_json(result)
+            return 0
+
+        if args.action == "send":
+            if not args.id:
+                raise AionUIError("--id is required for send.")
+            if not args.message:
+                raise AionUIError("--message is required for send.")
+            files = _normalize_files_arg(args.files_json, args.files_file)
+            result = manager.send_message(args.id, args.message, files=files)
+            _emit_json(result)
+            return 0
+
+        raise AionUIError(f"Unknown action: {args.action}")
+    except AionUIError as exc:
+        _emit_json({"error": str(exc)}, stream=sys.stderr)
+        return 1
+    finally:
+        manager.disconnect()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

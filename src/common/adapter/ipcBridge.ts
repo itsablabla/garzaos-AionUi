@@ -22,6 +22,7 @@ import type {
 } from '../update/updateTypes';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import type { SpeechToTextRequest, SpeechToTextResult } from '../types/speech';
+import type { ConversationOrgExtra } from '../types/orgTypes';
 
 export const shell = {
   openFile: bridge.buildProvider<void, string>('open-file'), // 使用系统默认程序打开文件
@@ -926,7 +927,7 @@ export interface ICreateConversationParams {
   id?: string;
   name?: string;
   model: TProviderWithModel;
-  extra: {
+  extra: ConversationOrgExtra & {
     workspace?: string;
     customWorkspace?: boolean;
     defaultFiles?: string[];

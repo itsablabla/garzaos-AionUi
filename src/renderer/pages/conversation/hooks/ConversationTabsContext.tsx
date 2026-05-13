@@ -6,6 +6,7 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 import { STORAGE_KEYS } from '@/common/config/storageKeys';
+import { getProjectBreadcrumb, readProjects } from '@/common/utils/orgStorage';
 import { addEventListener } from '@/renderer/utils/emitter';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -19,6 +20,12 @@ export interface ConversationTab {
   workspace: string;
   /** 会话类型 / Conversation type */
   type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot' | 'remote' | 'aionrs';
+  /** Org workspace ID / 组织工作区 ID */
+  workspace_id?: string;
+  /** Org project ID / 组织项目 ID */
+  project_id?: string;
+  /** Org project breadcrumb / 组织项目面包屑 */
+  project_breadcrumb?: string[];
   /** 是否有未保存的修改 / Whether there are unsaved changes */
   isDirty?: boolean;
 }
@@ -61,7 +68,11 @@ const loadPersistedState = (): { openTabs: ConversationTab[]; activeTabId: strin
       // 验证数据结构 / Validate data structure
       if (Array.isArray(parsed.openTabs)) {
         return {
-          openTabs: parsed.openTabs,
+          openTabs: parsed.openTabs.map((tab: ConversationTab) => ({
+            ...tab,
+            project_breadcrumb:
+              tab.project_breadcrumb || getProjectBreadcrumb(readProjects(), tab.workspace_id, tab.project_id),
+          })),
           activeTabId: parsed.activeTabId || null,
         };
       }
@@ -112,10 +123,25 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
     }
 
     setOpenTabs((prev) => {
+      const projectBreadcrumb = getProjectBreadcrumb(
+        readProjects(),
+        conversation.extra?.workspace_id,
+        conversation.extra?.project_id
+      );
       const exists = prev.find((tab) => tab.id === conversation.id);
       if (exists) {
-        // 已存在，不重复添加 / Already exists, don't add duplicate
-        return prev;
+        return prev.map((tab) =>
+          tab.id === conversation.id
+            ? {
+                ...tab,
+                name: conversation.name,
+                workspace: conversation.extra?.workspace || '',
+                workspace_id: conversation.extra?.workspace_id,
+                project_id: conversation.extra?.project_id,
+                project_breadcrumb: projectBreadcrumb,
+              }
+            : tab
+        );
       }
       // 添加新 tab / Add new tab
       return [
@@ -124,6 +150,9 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
           id: conversation.id,
           name: conversation.name,
           workspace: conversation.extra?.workspace || '',
+          workspace_id: conversation.extra?.workspace_id,
+          project_id: conversation.extra?.project_id,
+          project_breadcrumb: projectBreadcrumb,
           type: conversation.type,
         },
       ];

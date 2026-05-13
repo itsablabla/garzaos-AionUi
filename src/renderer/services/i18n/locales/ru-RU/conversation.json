@@ -297,5 +297,24 @@
   },
   "skills": {
     "loaded": "Загруженные навыки"
+  },
+  "org": {
+    "workspace": "Рабочая область",
+    "newProject": "Новый проект",
+    "recents": "Недавние",
+    "emptyProject": "Пока нет диалогов",
+    "moveToProject": "Переместить в проект…",
+    "revealInSidebar": "Показать в боковой панели",
+    "renameWorkspace": "Переименовать рабочую область",
+    "deleteWorkspace": "Удалить рабочую область",
+    "renameProject": "Переименовать проект",
+    "deleteProject": "Удалить проект",
+    "namePlaceholder": "Введите имя",
+    "moveSuccess": "Перемещено в проект",
+    "moveFailed": "Не удалось переместить диалог",
+    "create-workspace": "Новая рабочая область",
+    "rename-workspace": "Переименовать рабочую область",
+    "create-project": "Новый проект",
+    "rename-project": "Переименовать проект"
   }
 }

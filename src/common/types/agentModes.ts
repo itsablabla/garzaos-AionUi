@@ -5,6 +5,7 @@
  */
 
 import { CODEX_MODE_FULL_AUTO } from '@/common/types/codex/codexModes';
+import { DROID_BACKEND, DROID_FULL_AUTO_MODE } from '@/common/types/droidDefaults';
 
 /**
  * Full-auto (YOLO) mode ID per backend.
@@ -19,6 +20,7 @@ const FULL_AUTO_MODE: Record<string, string> = {
   codex: CODEX_MODE_FULL_AUTO,
   cursor: 'agent',
   snow: 'yolo',
+  [DROID_BACKEND]: DROID_FULL_AUTO_MODE,
 };
 
 /**

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
-import { useAuth } from '../../hooks/context/AuthContext';
+import { getPostLoginRedirect, useAuth } from '../../hooks/context/AuthContext';
 import './LoginPage.css';
 
 type MessageState = {
@@ -42,6 +42,7 @@ const LoginPage: React.FC = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [message, setMessage] = useState<MessageState | null>(null);
   const [loading, setLoading] = useState(false);
+  const postLoginRedirect = useMemo(() => getPostLoginRedirect(), []);
 
   const usernameRef = useRef<HTMLInputElement | null>(null);
   const passwordRef = useRef<HTMLInputElement | null>(null);
@@ -87,9 +88,9 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      void navigate('/guid', { replace: true });
+      void navigate(postLoginRedirect, { replace: true });
     }
-  }, [navigate, status]);
+  }, [navigate, postLoginRedirect, status]);
 
   const clearMessageLater = useCallback(() => {
     if (messageTimer.current) {
@@ -143,7 +144,12 @@ const LoginPage: React.FC = () => {
       setLoading(true);
       setMessage(null);
 
-      const result = await login({ username: trimmedUsername, password, remember: rememberMe });
+      const result = await login({
+        username: trimmedUsername,
+        password,
+        remember: rememberMe,
+        redirectTo: postLoginRedirect,
+      });
 
       if (result.success) {
         if (rememberMe) {
@@ -160,7 +166,7 @@ const LoginPage: React.FC = () => {
         showMessage({ type: 'success', text: successText });
 
         window.setTimeout(() => {
-          void navigate('/guid', { replace: true });
+          void navigate(result.message ?? postLoginRedirect, { replace: true });
         }, 600);
       } else {
         const errorText = (() => {
@@ -184,7 +190,7 @@ const LoginPage: React.FC = () => {
 
       setLoading(false);
     },
-    [login, navigate, password, rememberMe, showMessage, t, username]
+    [login, navigate, password, postLoginRedirect, rememberMe, showMessage, t, username]
   );
 
   if (status === 'checking') {

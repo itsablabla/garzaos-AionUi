@@ -5,12 +5,22 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
+import { ipcBridge } from '@/common';
+import type { ProjectRecord, WorkspaceRecord } from '@/common/types/orgTypes';
+import { GENERAL_PROJECT_ID, resolveProjectId, resolveWorkspaceId } from '@/common/types/orgTypes';
+import { readOrgExpansion, writeOrgExpansion } from '@/common/utils/orgStorage';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import { CronJobIndicator, useCronJobsMap } from '@/renderer/pages/cron';
+import {
+  useActiveWorkspace,
+  useProjectTree,
+  useProjects,
+  useWorkspaces,
+} from '@/renderer/pages/conversation/hooks/org';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Button, Empty, Input, Modal } from '@arco-design/web-react';
-import { FolderOpen } from '@icon-park/react';
+import { Button, Dropdown, Empty, Input, Menu, Message, Modal, Select } from '@arco-design/web-react';
+import { AddOne, FolderOpen, MoreOne } from '@icon-park/react';
 import classNames from 'classnames';
 import { Down, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,6 +38,21 @@ import { useDragAndDrop } from './hooks/useDragAndDrop';
 import { useExport } from './hooks/useExport';
 import type { ConversationRowProps, WorkspaceGroupedHistoryProps } from './types';
 
+type OrgModalMode = 'create-workspace' | 'rename-workspace' | 'create-project' | 'rename-project';
+
+type OrgModalState = {
+  mode: OrgModalMode;
+  name: string;
+  workspace?: WorkspaceRecord;
+  project?: ProjectRecord;
+} | null;
+
+const getConversationWorkspaceId = (conversation: TChatConversation): string =>
+  resolveWorkspaceId(conversation.extra?.workspace_id);
+
+const getConversationProjectId = (conversation: TChatConversation): string =>
+  resolveProjectId(conversation.extra?.project_id);
+
 const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   onSessionClick,
   collapsed = false,
@@ -39,6 +64,14 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
   const { t } = useTranslation();
   const { getJobStatus, markAsRead, setActiveConversation } = useCronJobsMap();
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set());
+  const [orgModal, setOrgModal] = useState<OrgModalState>(null);
+  const [moveConversation, setMoveConversation] = useState<TChatConversation | null>(null);
+  const [moveProjectId, setMoveProjectId] = useState<string>(GENERAL_PROJECT_ID);
+  const [orgExpansion, setOrgExpansion] = useState(() => readOrgExpansion());
+  const { workspaces, createWorkspace, renameWorkspace, deleteWorkspace } = useWorkspaces();
+  const { projects, createProject, renameProject, deleteProject } = useProjects();
+  const { activeWorkspaceId, setActiveWorkspaceId } = useActiveWorkspace();
+  const activeProjectTree = useProjectTree(projects, activeWorkspaceId);
   const toggleSection = useCallback((key: string) => {
     setCollapsedSections((prev) => {
       const next = new Set(prev);
@@ -47,6 +80,10 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    writeOrgExpansion(orgExpansion);
+  }, [orgExpansion]);
 
   // Sync active conversation ref when route changes (for URL navigation)
   // This doesn't trigger state update, avoiding double render
@@ -127,6 +164,100 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       collapsed,
     });
 
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
+  const visibleProjects = useMemo(
+    () => projects.filter((project) => project.workspace_id === (activeWorkspace?.id || activeWorkspaceId)),
+    [activeWorkspace?.id, activeWorkspaceId, projects]
+  );
+
+  const conversationsByProject = useMemo(() => {
+    const map = new Map<string, TChatConversation[]>();
+    conversations.forEach((conversation) => {
+      if (getConversationWorkspaceId(conversation) !== (activeWorkspace?.id || activeWorkspaceId)) return;
+      const projectId = getConversationProjectId(conversation);
+      const items = map.get(projectId) ?? [];
+      items.push(conversation);
+      map.set(projectId, items);
+    });
+    map.forEach((items) => items.sort((a, b) => b.modifyTime - a.modifyTime));
+    return map;
+  }, [activeWorkspace?.id, activeWorkspaceId, conversations]);
+
+  const recentsConversations = useMemo(
+    () =>
+      conversations
+        .filter(
+          (conversation) => getConversationWorkspaceId(conversation) === (activeWorkspace?.id || activeWorkspaceId)
+        )
+        .toSorted((a, b) => b.modifyTime - a.modifyTime)
+        .slice(0, 8),
+    [activeWorkspace?.id, activeWorkspaceId, conversations]
+  );
+
+  const projectOptions = useMemo(
+    () =>
+      projects.map((project) => ({
+        label: `${workspaces.find((workspace) => workspace.id === project.workspace_id)?.name || ''} / ${project.name}`,
+        value: project.id,
+      })),
+    [projects, workspaces]
+  );
+
+  const handleOrgModalOk = useCallback(() => {
+    if (!orgModal) return;
+    if (orgModal.mode === 'create-workspace') {
+      const workspace = createWorkspace(orgModal.name);
+      if (workspace) setActiveWorkspaceId(workspace.id);
+    } else if (orgModal.mode === 'rename-workspace' && orgModal.workspace) {
+      renameWorkspace(orgModal.workspace.id, orgModal.name);
+    } else if (orgModal.mode === 'create-project') {
+      createProject(activeWorkspace?.id || activeWorkspaceId, orgModal.name);
+    } else if (orgModal.mode === 'rename-project' && orgModal.project) {
+      renameProject(orgModal.project.id, orgModal.name);
+    }
+    setOrgModal(null);
+  }, [
+    activeWorkspace?.id,
+    activeWorkspaceId,
+    createProject,
+    createWorkspace,
+    orgModal,
+    renameProject,
+    renameWorkspace,
+    setActiveWorkspaceId,
+  ]);
+
+  const handleMoveConfirm = useCallback(async () => {
+    if (!moveConversation) return;
+    const project = projects.find((item) => item.id === moveProjectId);
+    if (!project) return;
+    try {
+      const success = await ipcBridge.conversation.update.invoke({
+        id: moveConversation.id,
+        updates: {
+          extra: {
+            workspace_id: project.workspace_id,
+            project_id: project.id,
+          } as Partial<TChatConversation['extra']>,
+        } as Partial<TChatConversation>,
+        mergeExtra: true,
+      });
+      if (success) {
+        Message.success(t('conversation.org.moveSuccess'));
+        setMoveConversation(null);
+      } else {
+        Message.error(t('conversation.org.moveFailed'));
+      }
+    } catch {
+      Message.error(t('conversation.org.moveFailed'));
+    }
+  }, [moveConversation, moveProjectId, projects, t]);
+
+  const handleMoveToProject = useCallback((conversation: TChatConversation) => {
+    setMoveConversation(conversation);
+    setMoveProjectId(getConversationProjectId(conversation));
+  }, []);
+
   const getConversationRowProps = useCallback(
     (conversation: TChatConversation): ConversationRowProps => ({
       conversation,
@@ -146,6 +277,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onDelete: handleDeleteClick,
       onExport: handleExportConversation,
       onTogglePin: handleTogglePin,
+      onMoveToProject: handleMoveToProject,
       getJobStatus,
     }),
     [
@@ -165,6 +297,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleDeleteClick,
       handleExportConversation,
       handleTogglePin,
+      handleMoveToProject,
       getJobStatus,
     ]
   );
@@ -174,16 +307,70 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     return <ConversationRow key={conversation.id} {...rowProps} />;
   };
 
+  const renderProjectSection = (project: ProjectRecord) => {
+    const isCollapsed = orgExpansion.projects[project.id] === false;
+    const projectConversations = conversationsByProject.get(project.id) ?? [];
+    return (
+      <div key={project.id} className='mb-4px min-w-0'>
+        {!collapsed && (
+          <div
+            className='flex items-center gap-6px px-12px py-7px cursor-pointer select-none rounded-8px hover:bg-fill-2'
+            onClick={() =>
+              setOrgExpansion((prev) => ({
+                ...prev,
+                projects: { ...prev.projects, [project.id]: isCollapsed },
+              }))
+            }
+          >
+            <span className='text-13px'>{project.icon || '▣'}</span>
+            <span className='text-13px text-t-primary font-medium truncate flex-1'>{project.name}</span>
+            <Dropdown
+              trigger='click'
+              position='br'
+              droplist={
+                <Menu
+                  onClickMenuItem={(key) => {
+                    if (key === 'rename') {
+                      setOrgModal({ mode: 'rename-project', name: project.name, project });
+                    } else if (key === 'delete') {
+                      deleteProject(project.id);
+                    }
+                  }}
+                >
+                  <Menu.Item key='rename'>{t('conversation.org.renameProject')}</Menu.Item>
+                  {!project.is_default && <Menu.Item key='delete'>{t('conversation.org.deleteProject')}</Menu.Item>}
+                </Menu>
+              }
+            >
+              <span
+                className='h-20px w-20px flex-center rd-4px hover:bg-fill-3'
+                onClick={(event) => event.stopPropagation()}
+              >
+                <MoreOne theme='outline' size={14} />
+              </span>
+            </Dropdown>
+            <span className='h-20px w-20px flex-center text-t-secondary'>
+              {isCollapsed ? <Right theme='outline' size={12} /> : <Down theme='outline' size={12} />}
+            </span>
+          </div>
+        )}
+        {!isCollapsed && (
+          <div className={classNames('flex flex-col gap-2px min-w-0', { 'pl-10px': !collapsed })}>
+            {projectConversations.length > 0 ? (
+              projectConversations.map((conversation) => renderConversation(conversation))
+            ) : !collapsed ? (
+              <div className='px-12px py-6px text-12px text-t-tertiary'>{t('conversation.org.emptyProject')}</div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Collect all sortable IDs for the pinned section
   const pinnedIds = useMemo(() => pinnedConversations.map((c) => c.id), [pinnedConversations]);
 
-  if (timelineSections.length === 0 && pinnedConversations.length === 0) {
-    return (
-      <div className='py-48px flex-center'>
-        <Empty description={t('conversation.history.noHistory')} />
-      </div>
-    );
-  }
+  const showEmptyHistory = conversations.length === 0 && pinnedConversations.length === 0;
 
   return (
     <>
@@ -309,6 +496,40 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
         onCancel={() => setShowExportDirectorySelector(false)}
       />
 
+      <Modal
+        title={orgModal ? t(`conversation.org.${orgModal.mode}`) : ''}
+        visible={Boolean(orgModal)}
+        onOk={handleOrgModalOk}
+        onCancel={() => setOrgModal(null)}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: !orgModal?.name.trim() }}
+        alignCenter
+        getPopupContainer={() => document.body}
+      >
+        <Input
+          autoFocus
+          value={orgModal?.name || ''}
+          onChange={(name) => setOrgModal((prev) => (prev ? { ...prev, name } : prev))}
+          onPressEnter={handleOrgModalOk}
+          placeholder={t('conversation.org.namePlaceholder')}
+          allowClear
+        />
+      </Modal>
+
+      <Modal
+        title={t('conversation.org.moveToProject')}
+        visible={Boolean(moveConversation)}
+        onOk={() => void handleMoveConfirm()}
+        onCancel={() => setMoveConversation(null)}
+        okText={t('common.confirm')}
+        cancelText={t('common.cancel')}
+        alignCenter
+        getPopupContainer={() => document.body}
+      >
+        <Select value={moveProjectId} onChange={setMoveProjectId} options={projectOptions} className='w-full' />
+      </Modal>
+
       {batchMode && !collapsed && (
         <div className='px-12px pb-8px'>
           <div className='rd-8px bg-fill-1 p-10px flex flex-col gap-8px border border-solid border-[rgba(var(--primary-6),0.08)]'>
@@ -346,6 +567,98 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       )}
 
       <div>
+        {!collapsed && activeWorkspace && (
+          <div className='px-12px pb-8px'>
+            <div className='flex items-center gap-6px mb-8px'>
+              <Select
+                size='small'
+                value={activeWorkspace.id}
+                onChange={setActiveWorkspaceId}
+                className='flex-1 min-w-0'
+                options={workspaces.map((workspace) => ({ label: workspace.name, value: workspace.id }))}
+              />
+              <Button
+                size='mini'
+                icon={<AddOne theme='outline' />}
+                onClick={() => setOrgModal({ mode: 'create-workspace', name: '' })}
+              />
+              <Dropdown
+                trigger='click'
+                position='br'
+                droplist={
+                  <Menu
+                    onClickMenuItem={(key) => {
+                      if (key === 'rename') {
+                        setOrgModal({
+                          mode: 'rename-workspace',
+                          name: activeWorkspace.name,
+                          workspace: activeWorkspace,
+                        });
+                      } else if (key === 'delete') {
+                        deleteWorkspace(activeWorkspace.id);
+                        setActiveWorkspaceId(workspaces[0]?.id || activeWorkspaceId);
+                      }
+                    }}
+                  >
+                    <Menu.Item key='rename'>{t('conversation.org.renameWorkspace')}</Menu.Item>
+                    {!activeWorkspace.is_default && (
+                      <Menu.Item key='delete'>{t('conversation.org.deleteWorkspace')}</Menu.Item>
+                    )}
+                  </Menu>
+                }
+              >
+                <Button size='mini' icon={<MoreOne theme='outline' />} />
+              </Dropdown>
+            </div>
+            <Button
+              size='mini'
+              type='secondary'
+              className='!w-full !justify-center'
+              icon={<AddOne theme='outline' />}
+              onClick={() => setOrgModal({ mode: 'create-project', name: '' })}
+            >
+              {t('conversation.org.newProject')}
+            </Button>
+          </div>
+        )}
+
+        {showEmptyHistory && (
+          <div className='py-48px flex-center'>
+            <Empty description={t('conversation.history.noHistory')} />
+          </div>
+        )}
+
+        {recentsConversations.length > 0 && (
+          <div className='mb-8px min-w-0'>
+            {!collapsed && (
+              <div
+                className='flex items-center px-12px py-8px cursor-pointer select-none sticky top-0 z-10 bg-fill-2'
+                onClick={() => toggleSection('org-recents')}
+              >
+                <span className='text-13px text-t-secondary font-bold leading-20px'>
+                  {t('conversation.org.recents')}
+                </span>
+                <div className='ml-auto h-20px w-20px rd-4px flex items-center justify-center hover:bg-fill-3 transition-all shrink-0 text-t-secondary'>
+                  {collapsedSections.has('org-recents') ? (
+                    <Right theme='outline' size={12} />
+                  ) : (
+                    <Down theme='outline' size={12} />
+                  )}
+                </div>
+              </div>
+            )}
+            {!collapsedSections.has('org-recents') && (
+              <div className='min-w-0'>
+                {recentsConversations.map((conversation) => renderConversation(conversation))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {visibleProjects.length > 0 && (
+          <div className='mb-8px min-w-0'>{activeProjectTree.map((project) => renderProjectSection(project))}</div>
+        )}
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

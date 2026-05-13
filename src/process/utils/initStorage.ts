@@ -32,6 +32,7 @@ import {
 } from './utils';
 import { getDatabase } from '../services/database/export';
 import type { AcpBackendConfig } from '@/common/types/acpTypes';
+import { DROID_BACKEND, DROID_FULL_AUTO_MODE, DROID_GARZA_SONNET_MODEL_ID } from '@/common/types/droidDefaults';
 import { migrateFromElectronConfig, importConfigFromFile } from './configMigration';
 import {
   BUILTIN_IMAGE_GEN_ID,
@@ -832,6 +833,30 @@ const cleanupOrphanedHealthCheckConversations = async () => {
   }
 };
 
+const ensureDroidGarzaDefaults = async () => {
+  const migrationKey = 'migration.garzaDroidDefaults_v1';
+  const done = await configFile.get(migrationKey).catch(() => false);
+  if (done) return;
+
+  const acpConfig = ((await configFile.get('acp.config').catch(() => undefined)) || {}) as IConfigStorageRefer['acp.config'];
+  const droidConfig = acpConfig[DROID_BACKEND] || {};
+  await configFile.set('acp.config', {
+    ...acpConfig,
+    [DROID_BACKEND]: {
+      ...droidConfig,
+      preferredModelId: DROID_GARZA_SONNET_MODEL_ID,
+      preferredMode: DROID_FULL_AUTO_MODE,
+    },
+  });
+
+  const savedAgent = await configFile.get('guid.lastSelectedAgent').catch(() => undefined);
+  if (!savedAgent || savedAgent === 'aionrs') {
+    await configFile.set('guid.lastSelectedAgent', DROID_BACKEND);
+  }
+
+  await configFile.set(migrationKey, true);
+};
+
 const initStorage = async () => {
   const t0 = performance.now();
   const mark = (label: string) => console.log(`[AionUi:init] ${label} +${Math.round(performance.now() - t0)}ms`);
@@ -852,6 +877,9 @@ const initStorage = async () => {
   ChatMessageStorage.interceptor(chatMessageFile);
   EnvStorage.interceptor(envFile);
   mark('3. storage interceptors');
+
+  await ensureDroidGarzaDefaults();
+  mark('3.0 droid defaults');
 
   // 3.1 Config migration only makes sense in standalone server mode (not inside Electron itself)
   if (!hasElectronAppPath()) {

@@ -202,6 +202,7 @@ const AionrsSendBox: React.FC<{
               throw new Error(maybeError.message || 'Failed to send message to team');
             }
           }
+          setWaitingResponse(false);
         } else {
           const result = await ipcBridge.conversation.sendMessage.invoke({
             input: displayMessage,
@@ -293,13 +294,7 @@ const AionrsSendBox: React.FC<{
     clearFiles();
     emitter.emit('aionrs.selected.file.clear');
 
-    if (
-      shouldEnqueueConversationCommand({
-        enabled: true,
-        isBusy,
-        hasPendingCommands,
-      })
-    ) {
+    if (!teamId && shouldEnqueueConversationCommand({ enabled: true, isBusy, hasPendingCommands })) {
       enqueue({ input: message, files: filesToSend });
       return;
     }

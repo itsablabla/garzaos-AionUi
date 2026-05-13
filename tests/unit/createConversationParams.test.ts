@@ -298,6 +298,29 @@ describe('createConversationParams', () => {
     expect(params.extra.currentModelId).toBe('gpt-5');
   });
 
+  it('defaults Droid conversations to Garza Sonnet and full auto', async () => {
+    configGet.mockImplementation(async (key: string) => {
+      if (key === 'acp.config') {
+        return {};
+      }
+      if (key === 'acp.cachedModels') {
+        return {};
+      }
+      return undefined;
+    });
+
+    const params = await buildCliAgentParams(
+      {
+        backend: 'droid',
+        name: 'Factory Droid',
+      },
+      '/tmp/workspace'
+    );
+
+    expect(params.extra.sessionMode).toBe('auto-high');
+    expect(params.extra.currentModelId).toBe('custom:Claude-Sonnet-4.6-(Garza)-0');
+  });
+
   it('throws error for aionrs if no enabled provider', async () => {
     configGet.mockResolvedValue([{ id: 'p1', enabled: false, model: ['m1'] }]);
     await expect(buildCliAgentParams({ backend: 'aionrs', name: 'Agent' }, '/tmp')).rejects.toThrow(
