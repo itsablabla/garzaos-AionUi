@@ -629,6 +629,23 @@ describe('platform send box queue integration', () => {
     );
   });
 
+  it('sends repeated ACP team messages immediately instead of queueing behind local busy state', async () => {
+    mockAcpRunning = true;
+
+    render(<AcpSendBox conversation_id='conv-acp' backend='claude' teamId='team-1' />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-send' }));
+
+    await waitFor(() => {
+      expect(mockTeamSendInvoke).toHaveBeenCalledWith({
+        teamId: 'team-1',
+        content: 'queued command',
+        files: [],
+      });
+    });
+    expect(queueSpies.enqueue).not.toHaveBeenCalled();
+  });
+
   it('still treats explicit team bridge sentinel errors as failures', async () => {
     mockTeamSendInvoke.mockResolvedValue({
       __bridgeError: true,

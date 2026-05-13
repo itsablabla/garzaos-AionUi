@@ -196,6 +196,7 @@ const AcpSendBox: React.FC<{
             const result = await ipcBridge.team.sendMessage.invoke({ teamId, content: displayMessage, files });
             assertTeamBridgeSuccess(result, 'Failed to send message to team');
           }
+          setAiProcessing(false);
         } else {
           const result = await ipcBridge.acpConversation.sendMessage.invoke({
             input: displayMessage,
@@ -272,13 +273,7 @@ Please check your local CLI tool authentication status`,
     clearFiles();
     emitter.emit('acp.selected.file.clear');
 
-    if (
-      shouldEnqueueConversationCommand({
-        enabled: true,
-        isBusy,
-        hasPendingCommands,
-      })
-    ) {
+    if (!teamId && shouldEnqueueConversationCommand({ enabled: true, isBusy, hasPendingCommands })) {
       enqueue({ input: message, files: allFiles });
       return;
     }
